@@ -847,8 +847,9 @@ function Brief() {
               : "Your description"}
           </div>
           <blockquote>
-            {state.intake.description ||
-              "No description provided. Add product details in the brief."}
+            {state.intake.description || (state.briefAnalysis?.sources?.length
+              ? "No description provided. This draft uses the website evidence below."
+              : "No description provided. Add product details in the brief.")}
           </blockquote>
           <dl>
             <dt>Provided link</dt>
@@ -858,7 +859,9 @@ function Brief() {
           <h3>You stay in control</h3>
           <p>
             {state.source === "ai"
-              ? "OpenAI extracted this draft from your description. Review the wording and fill in unknown facts. The provided link was not fetched."
+              ? state.briefAnalysis?.sources?.length
+                ? "Tavily retrieved the submitted page. OpenAI used that evidence and any description to draft this brief. Review website claims, inferred suggestions, and missing facts before confirming."
+                : "OpenAI drafted this brief from your description. No website was retrieved for this draft. Review the wording and fill in unknown facts."
               : state.source === "example"
                 ? "These are sample suggestions, not an AI analysis. Edit every field to make it yours."
                 : "Your text is copied into the brief, not analyzed by AI. Links have not been fetched or verified."}
