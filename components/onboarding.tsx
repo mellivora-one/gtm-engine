@@ -68,12 +68,25 @@ function AnalysisNotes({
           </ul>
         </>
       )}
+      {"sources" in analysis && analysis.sources && analysis.sources.length > 0 && (
+        <section className="source-evidence" aria-label="Website evidence">
+          <h3>Website evidence</h3>
+          {analysis.sources.map((source) => (
+            <div key={source.id}>
+              <a href={source.url} target="_blank" rel="noopener noreferrer">[{source.id}] {source.url}</a>
+              <p className="hint">{source.provider} · Retrieved {new Date(source.retrievedAt).toLocaleString()} · Only this page was read. Claims need your review.</p>
+              <details><summary>View extracted excerpt</summary><p className="source-excerpt">{source.excerpt}</p>
+                <p className="hint">Excerpt only.{source.truncated ? " Page content was shortened for analysis." : ""}</p>
+              </details>
+            </div>
+          ))}
+        </section>
+      )}
       <details className="analysis-provenance">
         <summary>Field origins and model confidence</summary>
         <p className="hint">
           Estimates apply to the original AI draft, not your later edits. They
-          are not calibrated or independently verified. No external sources were
-          retrieved.
+          are not calibrated or independently verified. Website claims are not independently verified.
         </p>
         <ul>
           {analysis.insights.map((insight, index) => (
@@ -82,6 +95,8 @@ function AnalysisNotes({
               <span className="insight-origin">
                 {insight.origin === "stated"
                   ? "From your input"
+                  : insight.origin === "source"
+                    ? "Website claim [S1]"
                   : insight.origin === "inferred"
                     ? "AI suggestion"
                     : "Unknown"}{" "}
@@ -365,9 +380,9 @@ export function Onboarding({ page }: { page: Page }) {
                         : "Defining your ideal customers"}
                     </h2>
                     <p>
-                      OpenAI is generating a structured draft from your
-                      information. No website or LinkedIn content is being
-                      retrieved.
+                      {aiBusy === "brief" && state.intake.url.trim()
+                        ? "Tavily is reading your website, then OpenAI will draft your brief. This can take up to a minute."
+                        : "OpenAI is generating a structured draft from your information."}
                     </p>
                   </div>
                 </div>
@@ -398,7 +413,7 @@ export function Onboarding({ page }: { page: Page }) {
                 : "Browser storage unavailable · Changes last for this visit"}
             </span>
             <span>
-              AI uses your description. No web research, enrichment, or sending.
+              Optional website reading via Tavily. No lead discovery or sending.
             </span>
           </footer>
         </main>
@@ -440,10 +455,10 @@ function Intake() {
     try {
       setError("");
       const draft = draftWorkspace(state);
-      if (draft.intake.description.length < 20)
-        throw new Error(
-          "Add at least 20 characters describing your product. Website and LinkedIn reading will be added in the RAG stage.",
-        );
+      const linkedIn = draft.intake.url && /(^|\.)linkedin\.com$/i.test(new URL(draft.intake.url).hostname.replace(/\.$/, ""));
+      if (linkedIn) throw new Error("LinkedIn profiles are not scraped. Replace this link with your product website, or remove it and describe the project you want to use.");
+      if (!draft.intake.url && draft.intake.description.length < 20)
+        throw new Error("Add at least 20 characters describing your product, or enter a public product website.");
       const runId = crypto.randomUUID();
       const result = briefResultSchema.parse(
         await requestAI("brief", {
@@ -525,7 +540,7 @@ function Intake() {
       <Field
         id="url"
         label="Product website or LinkedIn URL"
-        hint="Add a description, a link, or both."
+        hint="A public product website can be used on its own. LinkedIn requires a website or pasted product description instead."
       >
         <div className="input-with-icon">
           <Icon name="link" />
@@ -547,14 +562,15 @@ function Intake() {
       </Field>
       <div className="info-line" id="intake-help">
         <Icon name="info" size={18} />
-        <p>Personal LinkedIn profile? You will choose which project to use.</p>
+        <p>Personal LinkedIn profile? Tell us which project you mean and use its website. We do not assume your employer is your product.</p>
       </div>
       <div className="prototype-note">
         <strong>
-          Your description is sent to OpenAI to create an editable brief.
+          Website links are sent to Tavily for single-page extraction.
         </strong>{" "}
-        Links are saved but not fetched yet. Do not include secrets or sensitive
-        personal information. Suggestions require your review.
+        Your description and extracted text are sent to OpenAI to draft a brief.
+        Use public pages only—no private links, credentials, or sensitive personal information.
+        You review the sources and confirm the result.
       </div>
       {error && (
         <p className="form-error" role="alert" tabIndex={-1} ref={errorRef}>

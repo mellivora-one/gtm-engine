@@ -81,7 +81,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ ...payload, requestId: crypto.randomUUID() }),
         signal: AbortSignal.any([
           controller.signal,
-          AbortSignal.timeout(55_000),
+          AbortSignal.timeout(85_000),
         ]),
       });
       const data = await response.json();

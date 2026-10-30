@@ -19,7 +19,7 @@ export const productSchema = z.object({
 });
 export const insightSchema = z.object({
   field: z.string().max(80),
-  origin: z.enum(["stated", "inferred", "unknown"]),
+  origin: z.enum(["stated", "source", "inferred", "unknown"]),
   confidence: z.number().min(0).max(1),
   explanation: z.string().max(300),
 });
@@ -60,7 +60,18 @@ export type AnalysisMeta = {
   model: string;
   generatedAt: string;
 };
-export type BriefResult = BriefAnalysis & { meta: AnalysisMeta };
+export const sourceSchema = z.object({
+  id: z.literal("S1"),
+  url: z.string().url().max(2000).refine(value => {
+    try { const url = new URL(value); return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password; }
+    catch { return false; }
+  }),
+  retrievedAt: z.string(),
+  excerpt: z.string().max(1200),
+  truncated: z.boolean(),
+  provider: z.literal("Tavily Extract"),
+});
+export type BriefResult = BriefAnalysis & { meta: AnalysisMeta; sources?: z.infer<typeof sourceSchema>[] };
 export type CustomerResult = CustomerAnalysis & { meta: AnalysisMeta };
 const metaSchema = z.object({
   runId: z.uuid(),
@@ -69,14 +80,14 @@ const metaSchema = z.object({
   model: z.string(),
   generatedAt: z.string(),
 });
-export const briefResultSchema = briefSchema.extend({ meta: metaSchema });
+export const briefResultSchema = briefSchema.extend({ meta: metaSchema, sources: z.array(sourceSchema).max(1).optional() });
 export const customerResultSchema = customerSchema.extend({ meta: metaSchema });
 export type AIKind = "brief" | "profile";
 
 const ids = { runId: z.uuid(), requestId: z.uuid() };
 export const briefInputSchema = z.object({
   ...ids,
-  description: z.string().trim().min(20).max(6000),
+  description: z.string().trim().max(6000),
   url: z.string().max(2000),
 });
 export const customerInputSchema = z.object({

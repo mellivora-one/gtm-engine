@@ -20,7 +20,7 @@ import {
 
 const now = 1_000_000;
 const empty = (): Ledger => ({
-  version: 1,
+  version: 2,
   startsAt: 0,
   endsAt: now + 72 * 3_600_000,
   budgetMicros: BUDGET_MICROS,
@@ -166,4 +166,22 @@ test("the pinned model's bounded request fits well below its reservation", () =>
   );
   assert.ok(conservativeCostMicros < RESERVATION_MICROS);
   assert.equal(400 * RESERVATION_MICROS, BUDGET_MICROS);
+});
+
+
+test("the 200-credit Tavily cap shares atomic reservation protection without resetting OpenAI's window", async () => {
+  let ledger = empty();
+  ledger.reservations = Array.from({ length: 199 }, (_, i) => ({ ...item(String(i), now - 120_000), tavilyReservedCredits: 1 as const }));
+  let version = 1;
+  class Conflict extends Error {}
+  const store: LedgerStore = {
+    async read() { return { ledger: structuredClone(ledger), etag: String(version) }; },
+    async write(updated, etag) { if (etag !== String(version)) throw new Conflict(); ledger = updated; version++; },
+    isConflict(error) { return error instanceof Conflict; },
+  };
+  const results = await Promise.allSettled(["a", "b"].map(id => reserve(store, { ...item(id), tavilyReservedCredits: 1 }, () => now)));
+  assert.equal(results.filter(r => r.status === "fulfilled").length, 1);
+  assert.equal(ledger.reservations.filter(r => r.tavilyReservedCredits).length, 200);
+  assert.equal(ledger.endsAt, empty().endsAt);
+  await reserve(store, item("description-only"), () => now);
 });

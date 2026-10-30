@@ -12,9 +12,12 @@ const reservationSchema = z.object({
   outputTokens: z.number().optional(),
   estimatedCostMicros: z.number().optional(),
   responseId: z.string().optional(),
+  tavilyReservedCredits: z.literal(1).optional(),
+  tavilyRequestId: z.string().optional(),
+  tavilyReportedCredits: z.number().nonnegative().optional(),
 });
 export const ledgerSchema = z.object({
-  version: z.literal(1),
+  version: z.literal(2),
   startsAt: z.number(),
   endsAt: z.number(),
   budgetMicros: z.literal(BUDGET_MICROS),
@@ -55,6 +58,12 @@ export function reserveInLedger(
       409,
       "This request has already been submitted. Review the existing result before starting a new request.",
     );
+  // One credit reserved for each single-page basic extraction, conservatively
+  // above the published one-credit-per-five-successes rate. Never refund.
+  if (reservation.tavilyReservedCredits &&
+      ledger.reservations.reduce((sum, item) => sum + (item.tavilyReservedCredits ?? 0), 0) + 1 > 200)
+    throw new GateError("tavily_budget_exhausted", 402,
+      "The 200-credit Tavily demo allowance is exhausted. Remove the link to use your description, or continue manually.");
   if (
     (ledger.reservations.length + 1) * RESERVATION_MICROS >
     ledger.budgetMicros

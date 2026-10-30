@@ -2116,3 +2116,8 @@ textarea {
     animation: spin 1s linear infinite;
   }
 }
+
+.source-evidence { margin-block: 1.25rem; padding: 1rem; border: 1px solid #c9dafb; border-radius: 12px; background: #f3f7ff; }
+.source-evidence a { color: #2458c8; overflow-wrap: anywhere; }
+.source-evidence summary { cursor: pointer; font-size: .85rem; }
+.source-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; line-height: 1.6; }

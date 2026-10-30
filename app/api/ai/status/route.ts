@@ -7,6 +7,9 @@ export async function GET() {
     return Response.json(
       {
         configured: !!process.env.OPENAI_API_KEY,
+        websiteConfigured: !!process.env.TAVILY_API_KEY,
+        tavilyCreditLimit: 200,
+        tavilyReservedCredits: ledger.reservations.reduce((sum, item) => sum + (item.tavilyReservedCredits ?? 0), 0),
         active:
           !!process.env.OPENAI_API_KEY &&
           Date.now() >= ledger.startsAt &&
