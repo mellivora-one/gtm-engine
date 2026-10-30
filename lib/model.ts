@@ -1,3 +1,10 @@
+import {
+  briefResultSchema,
+  customerResultSchema,
+  type BriefResult,
+  type CustomerResult,
+} from "./ai-schema.ts";
+
 export type Product = {
   name: string;
   description: string;
@@ -6,6 +13,8 @@ export type Product = {
   website: string;
   pricing: string;
   customers: string;
+  features: string;
+  constraints: string;
 };
 export type Profile = {
   industry: string;
@@ -20,7 +29,10 @@ export type Workspace = {
   intake: { description: string; url: string };
   product: Product;
   profile: Profile;
-  source: "manual" | "example";
+  source: "manual" | "example" | "ai";
+  runId?: string;
+  briefAnalysis?: BriefResult;
+  customerAnalysis?: CustomerResult;
   drafted: boolean;
   productConfirmed: boolean;
   customersConfirmed: boolean;
@@ -38,6 +50,8 @@ export const emptyWorkspace: Workspace = {
     website: "",
     pricing: "",
     customers: "",
+    features: "",
+    constraints: "",
   },
   profile: {
     industry: "",
@@ -57,7 +71,7 @@ export const exampleWorkspace: Workspace = {
   ...emptyWorkspace,
   intake: {
     description:
-      "We build an AI assistant that helps B2B SaaS teams handle repetitive support questions.",
+      "AI Support Assistant helps B2B SaaS support teams answer repetitive customer questions. It drafts answers for agents to review before sending.",
     url: "",
   },
   product: {
@@ -68,6 +82,8 @@ export const exampleWorkspace: Workspace = {
     website: "",
     pricing: "",
     customers: "",
+    features: "Draft answers to recurring customer questions for agent review.",
+    constraints: "Human approval before sending responses.",
   },
   profile: {
     industry: "B2B SaaS",
@@ -182,6 +198,8 @@ export function restoreWorkspace(value: unknown): Workspace {
       website: text(product.website),
       pricing: text(product.pricing),
       customers: text(product.customers),
+      features: text(product.features),
+      constraints: text(product.constraints),
     },
     profile: {
       industry: text(profile.industry),
@@ -191,7 +209,18 @@ export function restoreWorkspace(value: unknown): Workspace {
       signals: list(profile.signals),
       exclusions: text(profile.exclusions),
     },
-    source: raw.source === "example" ? "example" : "manual",
+    source:
+      raw.source === "ai"
+        ? "ai"
+        : raw.source === "example"
+          ? "example"
+          : "manual",
+    runId:
+      typeof raw.runId === "string" && /^[a-f0-9-]{36}$/i.test(raw.runId)
+        ? raw.runId
+        : undefined,
+    briefAnalysis: briefResultSchema.safeParse(raw.briefAnalysis).data,
+    customerAnalysis: customerResultSchema.safeParse(raw.customerAnalysis).data,
     drafted: raw.drafted === true,
     productConfirmed: raw.productConfirmed === true,
     customersConfirmed: raw.customersConfirmed === true,
@@ -224,7 +253,9 @@ export function restoreWorkspace(value: unknown): Workspace {
 export function exportPlan(state: Workspace) {
   return {
     schemaVersion: 1,
-    mode: "prototype-search-plan",
+    mode: state.briefAnalysis
+      ? "ai-assisted-search-plan"
+      : "manual-search-plan",
     generatedAt: new Date().toISOString(),
     product: state.product,
     idealCustomers: state.profile,
@@ -236,5 +267,6 @@ export function exportPlan(state: Workspace) {
     liveResearchPerformed: false,
     enrichmentPerformed: false,
     messagesSent: 0,
+    ai: { brief: state.briefAnalysis, customerProfile: state.customerAnalysis },
   };
 }

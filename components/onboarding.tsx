@@ -22,9 +22,84 @@ import {
 import { useWorkspace } from "./workspace";
 import { Icon } from "./icons";
 import { WorkspaceSkeleton } from "./workspace-skeleton";
+import {
+  briefResultSchema,
+  customerResultSchema,
+  type BriefResult,
+  type CustomerResult,
+} from "@/lib/ai-schema";
 
 type Page = "intake" | "brief" | "customers" | "discover";
 const steps = ["Product brief", "Ideal customers", "Discover leads"];
+
+function AnalysisNotes({
+  analysis,
+}: {
+  analysis: BriefResult | CustomerResult | undefined;
+}) {
+  if (!analysis) return null;
+  return (
+    <div className="analysis-notes">
+      <span className="status">
+        <Icon name="spark" size={14} />
+        AI-generated · Review before confirming
+      </span>
+      {analysis.questions.length > 0 && (
+        <div className="clarifications">
+          <h3>Worth clarifying</h3>
+          <ul>
+            {analysis.questions.map((question) => (
+              <li key={question}>{question}</li>
+            ))}
+          </ul>
+          <p className="hint">
+            Add the answers to the editable fields. Unknown details are not
+            filled in as facts.
+          </p>
+        </div>
+      )}
+      {analysis.assumptions.length > 0 && (
+        <>
+          <h3>Assumptions to review</h3>
+          <ul>
+            {analysis.assumptions.map((assumption) => (
+              <li key={assumption}>{assumption}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      <details className="analysis-provenance">
+        <summary>Field origins and model confidence</summary>
+        <p className="hint">
+          Estimates apply to the original AI draft, not your later edits. They
+          are not calibrated or independently verified. No external sources were
+          retrieved.
+        </p>
+        <ul>
+          {analysis.insights.map((insight, index) => (
+            <li key={`${insight.field}-${index}`}>
+              <strong>{insight.field}</strong>
+              <span className="insight-origin">
+                {insight.origin === "stated"
+                  ? "From your input"
+                  : insight.origin === "inferred"
+                    ? "AI suggestion"
+                    : "Unknown"}{" "}
+                · {Math.round(insight.confidence * 100)}%
+              </span>
+              <p>{insight.explanation}</p>
+            </li>
+          ))}
+        </ul>
+      </details>
+      <p className="analysis-receipt">
+        {analysis.meta.model}
+        <br />
+        Run: {analysis.meta.runId}
+      </p>
+    </div>
+  );
+}
 
 function Status({
   children,
@@ -98,7 +173,7 @@ function Actions({
 }
 
 export function Onboarding({ page }: { page: Page }) {
-  const { state, setState, ready, storageAvailable, isNavigating } =
+  const { state, setState, ready, storageAvailable, isNavigating, aiBusy } =
     useWorkspace();
   const router = useRouter();
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -152,7 +227,15 @@ export function Onboarding({ page }: { page: Page }) {
         Skip to content
       </a>
       <aside className="sidebar">
-        <Link href="/" className="brand" aria-label="GTM Engine home">
+        <Link
+          href="/"
+          className="brand"
+          aria-label="GTM Engine home"
+          aria-disabled={!!aiBusy}
+          onClick={(event) => {
+            if (aiBusy) event.preventDefault();
+          }}
+        >
           <span className="brand-mark">
             <span />
             <span />
@@ -192,7 +275,7 @@ export function Onboarding({ page }: { page: Page }) {
               );
               return (
                 <li key={label} className={index === active ? "active" : ""}>
-                  {canNavigate ? (
+                  {canNavigate && !aiBusy ? (
                     <Link
                       href={
                         index === 0
@@ -236,9 +319,10 @@ export function Onboarding({ page }: { page: Page }) {
             Workspace <span>/</span> {steps[active]}
           </span>
           <div className="topbar-right">
-            <span className="prototype-badge">Interactive prototype</span>
+            <span className="prototype-badge">AI-assisted workspace</span>
             <button
               className="text-button reset-button"
+              disabled={!!aiBusy}
               onClick={() => setResetOpen(true)}
             >
               Start over
@@ -265,16 +349,45 @@ export function Onboarding({ page }: { page: Page }) {
           {!ready || !allowed || showNavigationSkeleton ? (
             <WorkspaceSkeleton variant={page} />
           ) : (
-            <div className="page-body" key={page}>
-              {page === "intake" ? (
-                <Intake />
-              ) : page === "brief" ? (
-                <Brief />
-              ) : page === "customers" ? (
-                <Customers />
-              ) : (
-                <Discover />
-              )}
+            <div aria-busy={!!aiBusy}>
+              <section
+                hidden={!aiBusy}
+                className="analysis-loading"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="analysis-loading-heading">
+                  <span className="analysis-spinner" aria-hidden="true" />
+                  <div>
+                    <h2>
+                      {aiBusy === "brief"
+                        ? "Understanding your product"
+                        : "Defining your ideal customers"}
+                    </h2>
+                    <p>
+                      OpenAI is generating a structured draft from your
+                      information. No website or LinkedIn content is being
+                      retrieved.
+                    </p>
+                  </div>
+                </div>
+                <WorkspaceSkeleton
+                  variant={aiBusy === "profile" ? "customers" : "brief"}
+                />
+              </section>
+              <div hidden={!!aiBusy}>
+                <div className="page-body" key={page}>
+                  {page === "intake" ? (
+                    <Intake />
+                  ) : page === "brief" ? (
+                    <Brief />
+                  ) : page === "customers" ? (
+                    <Customers />
+                  ) : (
+                    <Discover />
+                  )}
+                </div>
+              </div>
             </div>
           )}
           <footer className="workspace-footer">
@@ -284,7 +397,9 @@ export function Onboarding({ page }: { page: Page }) {
                 ? "Saved only in this browser"
                 : "Browser storage unavailable · Changes last for this visit"}
             </span>
-            <span>No AI, scraping, enrichment, or sending is connected.</span>
+            <span>
+              AI uses your description. No web research, enrichment, or sending.
+            </span>
           </footer>
         </main>
       </div>
@@ -303,7 +418,8 @@ export function Onboarding({ page }: { page: Page }) {
 }
 
 function Intake() {
-  const { state, setState, navigate, isNavigating } = useWorkspace();
+  const { state, setState, navigate, isNavigating, aiBusy, requestAI } =
+    useWorkspace();
   const [error, setError] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
   const update = (key: "description" | "url", value: string) => {
@@ -315,12 +431,43 @@ function Intake() {
       drafted: false,
       productConfirmed: false,
       customersConfirmed: false,
+      briefAnalysis: undefined,
+      customerAnalysis: undefined,
     }));
   };
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      setState(draftWorkspace(state));
+      setError("");
+      const draft = draftWorkspace(state);
+      if (draft.intake.description.length < 20)
+        throw new Error(
+          "Add at least 20 characters describing your product. Website and LinkedIn reading will be added in the RAG stage.",
+        );
+      const runId = crypto.randomUUID();
+      const result = briefResultSchema.parse(
+        await requestAI("brief", {
+          description: draft.intake.description,
+          url: draft.intake.url,
+          runId,
+        }),
+      );
+      setState((previous) => ({
+        ...previous,
+        intake: draft.intake,
+        product: {
+          ...result.product,
+          website: isPersonalLinkedIn(draft.intake.url) ? "" : draft.intake.url,
+        },
+        profile: { ...emptyWorkspace.profile },
+        source: "ai",
+        runId,
+        briefAnalysis: result,
+        customerAnalysis: undefined,
+        drafted: true,
+        productConfirmed: false,
+        customersConfirmed: false,
+      }));
       navigate("/brief");
     } catch (error) {
       setError(
@@ -334,7 +481,7 @@ function Intake() {
       onSubmit={submit}
       className="intake-form"
       data-example={state.source === "example"}
-      aria-busy={isNavigating}
+      aria-busy={isNavigating || !!aiBusy}
     >
       <div className="intake-prompt">
         <span className="prompt-icon">
@@ -356,7 +503,7 @@ function Intake() {
         <textarea
           id="description"
           name="description"
-          maxLength={8000}
+          maxLength={6000}
           rows={6}
           value={state.intake.description}
           onChange={(event) => update("description", event.target.value)}
@@ -366,7 +513,7 @@ function Intake() {
         <div className="textarea-footer">
           <span>A few sentences are enough.</span>
           <span>
-            {state.intake.description.length.toLocaleString()} / 8,000
+            {state.intake.description.length.toLocaleString()} / 6,000
           </span>
         </div>
       </Field>
@@ -403,20 +550,48 @@ function Intake() {
         <p>Personal LinkedIn profile? You will choose which project to use.</p>
       </div>
       <div className="prototype-note">
-        <strong>A working interface, not a research service yet.</strong> Your
-        text carries into an editable brief. Links are saved, not fetched. Use
-        the example to explore suggested fields.
+        <strong>
+          Your description is sent to OpenAI to create an editable brief.
+        </strong>{" "}
+        Links are saved but not fetched yet. Do not include secrets or sensitive
+        personal information. Suggestions require your review.
       </div>
       {error && (
         <p className="form-error" role="alert" tabIndex={-1} ref={errorRef}>
           {error}
         </p>
       )}
+      {error && (
+        <button
+          type="button"
+          className="text-button manual-fallback"
+          onClick={() => {
+            try {
+              setState({
+                ...draftWorkspace(state),
+                source: "manual",
+                briefAnalysis: undefined,
+                customerAnalysis: undefined,
+                runId: undefined,
+              });
+              navigate("/brief");
+            } catch (error) {
+              setError(
+                error instanceof Error
+                  ? error.message
+                  : "Add a description or link.",
+              );
+            }
+          }}
+        >
+          Continue manually without AI
+        </button>
+      )}
       <Actions note="Review and confirm your brief before we find customers.">
         <button
           className="button primary"
           type="submit"
-          disabled={isNavigating}
+          disabled={isNavigating || !!aiBusy}
         >
           {isNavigating ? (
             <>
@@ -435,7 +610,8 @@ function Intake() {
 }
 
 function Brief() {
-  const { state, setState, navigate, isNavigating } = useWorkspace();
+  const { state, setState, navigate, isNavigating, aiBusy, requestAI } =
+    useWorkspace();
   const [error, setError] = useState("");
   const personal = isPersonalLinkedIn(state.intake.url);
   const update = (key: keyof Product, value: string) => {
@@ -445,25 +621,45 @@ function Brief() {
       product: { ...previous.product, [key]: value },
       productConfirmed: false,
       customersConfirmed: false,
+      customerAnalysis: undefined,
     }));
   };
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
       const website = normalizeUrl(state.product.website);
+      setError("");
+      let customerAnalysis = state.customerAnalysis;
+      if (!customerAnalysis) {
+        const { website: ignoredWebsite, ...product } = state.product;
+        void ignoredWebsite;
+        const runId = state.runId ?? crypto.randomUUID();
+        customerAnalysis = customerResultSchema.parse(
+          await requestAI("profile", { product, runId }),
+        );
+      }
       setState((previous) => ({
         ...previous,
         product: { ...previous.product, website },
         productConfirmed: true,
         customersConfirmed: false,
+        profile: state.customerAnalysis
+          ? previous.profile
+          : customerAnalysis.profile,
+        customerAnalysis,
+        runId: customerAnalysis.meta.runId,
       }));
       navigate("/customers");
-    } catch {
-      setError("Please enter a valid product website, or leave it blank.");
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "The customer profile could not be generated.",
+      );
     }
   }
   return (
-    <form onSubmit={submit} aria-busy={isNavigating}>
+    <form onSubmit={submit} aria-busy={isNavigating || !!aiBusy}>
       <div className="status-row">
         <Status>Draft · Needs your confirmation</Status>
         {state.source === "example" && (
@@ -498,7 +694,8 @@ function Brief() {
               id="product-description"
               name="productDescription"
               required
-              maxLength={8000}
+              minLength={10}
+              maxLength={2000}
               rows={4}
               value={state.product.description}
               onChange={(event) => update("description", event.target.value)}
@@ -542,6 +739,43 @@ function Brief() {
               value={state.product.benefit}
               onChange={(event) => update("benefit", event.target.value)}
               placeholder="What improves for your customers?"
+            />
+          </Field>
+          <Field
+            id="features"
+            label={
+              <>
+                Core features <span className="optional">(optional)</span>
+              </>
+            }
+          >
+            <textarea
+              id="features"
+              name="features"
+              rows={3}
+              maxLength={1500}
+              value={state.product.features}
+              onChange={(event) => update("features", event.target.value)}
+              placeholder="What capabilities does the product offer?"
+            />
+          </Field>
+          <Field
+            id="constraints"
+            label={
+              <>
+                Technical constraints{" "}
+                <span className="optional">(optional)</span>
+              </>
+            }
+          >
+            <textarea
+              id="constraints"
+              name="constraints"
+              rows={2}
+              maxLength={1000}
+              value={state.product.constraints}
+              onChange={(event) => update("constraints", event.target.value)}
+              placeholder="Required integrations, supported environments, or other limits."
             />
           </Field>
           <details className="details">
@@ -607,10 +841,13 @@ function Brief() {
           <hr />
           <h3>You stay in control</h3>
           <p>
-            {state.source === "example"
-              ? "These are sample suggestions, not an AI analysis. Edit every field to make it yours."
-              : "Your text is copied into the brief, not analyzed by AI. Links have not been fetched or verified."}
+            {state.source === "ai"
+              ? "OpenAI extracted this draft from your description. Review the wording and fill in unknown facts. The provided link was not fetched."
+              : state.source === "example"
+                ? "These are sample suggestions, not an AI analysis. Edit every field to make it yours."
+                : "Your text is copied into the brief, not analyzed by AI. Links have not been fetched or verified."}
           </p>
+          <AnalysisNotes analysis={state.briefAnalysis} />
           <p className="small">
             Only the product name and description are required. Missing details
             can be added later.
@@ -622,6 +859,23 @@ function Brief() {
           {error}
         </p>
       )}
+      {error && (
+        <button
+          type="button"
+          className="text-button manual-fallback"
+          onClick={() => {
+            setState((previous) => ({
+              ...previous,
+              productConfirmed: true,
+              customersConfirmed: false,
+              customerAnalysis: undefined,
+            }));
+            navigate("/customers");
+          }}
+        >
+          Confirm brief and define customers manually
+        </button>
+      )}
       <Actions
         back="/"
         backLabel="Back to input"
@@ -630,7 +884,7 @@ function Brief() {
         <button
           className="button primary"
           type="submit"
-          disabled={isNavigating}
+          disabled={isNavigating || !!aiBusy}
         >
           {isNavigating ? (
             <>
@@ -758,7 +1012,9 @@ function Customers() {
             <span className="subtle-label">
               {state.source === "example"
                 ? "Example suggestions · Review first"
-                : "Your preferences"}
+                : state.customerAnalysis
+                  ? "AI suggestions · Review first"
+                  : "Your preferences"}
             </span>
           </div>
           <Field id="industry" label="Industry">
@@ -830,33 +1086,43 @@ function Customers() {
               Buying signals <span className="optional">(optional)</span>
             </legend>
             <div className="signal-options">
-              {["Hiring support agents", "Growing support team"].map(
-                (signal) => (
-                  <label
-                    key={signal}
-                    className={`signal-option ${state.profile.signals.includes(signal) ? "selected" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={state.profile.signals.includes(signal)}
-                      onChange={(event) =>
-                        update(
-                          "signals",
-                          event.target.checked
-                            ? [...state.profile.signals, signal]
-                            : state.profile.signals.filter(
-                                (item) => item !== signal,
-                              ),
-                        )
-                      }
-                    />
-                    <span>
-                      <span className="signal-kicker">Example signal</span>
-                      {signal}
+              {Array.from(
+                new Set([
+                  ...(state.customerAnalysis?.profile.signals ?? []),
+                  ...state.profile.signals,
+                  ...(state.source === "example"
+                    ? ["Hiring support agents", "Growing support team"]
+                    : []),
+                ]),
+              ).map((signal) => (
+                <label
+                  key={signal}
+                  className={`signal-option ${state.profile.signals.includes(signal) ? "selected" : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={state.profile.signals.includes(signal)}
+                    onChange={(event) =>
+                      update(
+                        "signals",
+                        event.target.checked
+                          ? [...state.profile.signals, signal]
+                          : state.profile.signals.filter(
+                              (item) => item !== signal,
+                            ),
+                      )
+                    }
+                  />
+                  <span>
+                    <span className="signal-kicker">
+                      {state.customerAnalysis
+                        ? "Suggested criterion"
+                        : "Example signal"}
                     </span>
-                  </label>
-                ),
-              )}
+                    {signal}
+                  </span>
+                </label>
+              ))}
             </div>
             <p className="hint">
               Select only if relevant. These are criteria, not observed facts.
@@ -903,15 +1169,18 @@ function Customers() {
           </p>
           <hr />
           <h3>
-            {state.source === "example"
+            {state.customerAnalysis || state.source === "example"
               ? "Why these suggestions?"
               : "Make this profile yours"}
           </h3>
           <p>
-            {state.source === "example"
-              ? "The sample product helps SaaS teams reduce repetitive support work, so support and customer success leaders are a starting point."
-              : "Choose organizations with the problem you solve, then the person who owns that problem or the budget."}
+            {state.customerAnalysis
+              ? state.customerAnalysis.rationale
+              : state.source === "example"
+                ? "The sample product helps SaaS teams reduce repetitive support work, so support and customer success leaders are a starting point."
+                : "Choose organizations with the problem you solve, then the person who owns that problem or the budget."}
           </p>
+          <AnalysisNotes analysis={state.customerAnalysis} />
           <button
             type="button"
             className="text-button help-button"

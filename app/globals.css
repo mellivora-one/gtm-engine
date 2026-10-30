@@ -2015,3 +2015,104 @@ textarea {
     content: none;
   }
 }
+
+/* Real AI states: honest waiting, visible assumptions, and editable output. */
+[hidden] {
+  display: none !important;
+}
+.analysis-loading-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin: 0 0 28px;
+}
+.analysis-loading-heading h2 {
+  font-size: 18px;
+  margin-bottom: 7px;
+}
+.analysis-loading-heading p {
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 600px;
+}
+.analysis-spinner {
+  width: 27px;
+  height: 27px;
+  border: 2px solid #d5e4fb;
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.analysis-notes {
+  margin-top: 24px;
+  border-top: 1px solid #d0dcec;
+  padding-top: 21px;
+}
+.analysis-notes > .status {
+  margin-bottom: 17px;
+}
+.analysis-notes h3 {
+  margin-top: 12px;
+}
+.analysis-notes ul {
+  padding-left: 17px;
+  margin: 10px 0 16px;
+  color: #526c91;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.analysis-notes li + li {
+  margin-top: 9px;
+}
+.analysis-provenance {
+  border-top: 1px solid #dce5f2;
+  margin-top: 18px;
+  padding-top: 14px;
+}
+.analysis-provenance summary {
+  font-size: 11px;
+  cursor: pointer;
+  color: #245697;
+}
+.analysis-provenance > .hint {
+  margin-top: 12px;
+}
+.analysis-provenance ul {
+  list-style: none;
+  padding: 0;
+}
+.analysis-provenance li {
+  padding-block: 11px;
+  border-bottom: 1px solid #e3eaf4;
+}
+.analysis-provenance strong {
+  display: block;
+  color: var(--ink);
+  text-transform: capitalize;
+  font-size: 11px;
+}
+.insight-origin {
+  display: block;
+  font-size: 10px;
+  color: #426b9e;
+  margin: 4px 0;
+}
+.analysis-provenance li p {
+  font-size: 11px;
+}
+.analysis-receipt {
+  font-size: 9px !important;
+  color: #6a7f9c !important;
+  overflow-wrap: anywhere;
+  margin-top: 17px !important;
+}
+.manual-fallback {
+  margin-top: 14px;
+  min-height: 40px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .analysis-spinner {
+    animation: spin 1s linear infinite;
+  }
+}
