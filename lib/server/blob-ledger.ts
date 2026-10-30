@@ -7,6 +7,9 @@ export const blobLedger: LedgerStore = {
     const result = await get(LEDGER_PATH, {
       access: "private",
       useCache: false,
+      // Compression turns the origin ETag into a weak validator, which cannot
+      // be used by ifMatch. Keep the exact origin representation for CAS.
+      headers: { "accept-encoding": "identity" },
       abortSignal: AbortSignal.timeout(8000),
     });
     if (!result || result.statusCode !== 200 || !result.stream)
