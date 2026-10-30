@@ -4,12 +4,18 @@ A blue, responsive AI onboarding flow: description and/or public website → Tav
 
 ## What works
 
-- OpenAI Responses API Structured Outputs generates real product briefs and customer profiles using the pinned `gpt-4.1-mini-2025-04-14` model.
+- OpenAI Responses API Structured Outputs generates real product briefs and customer profiles using the explicit `gpt-6.1-sol` model for both steps.
 - Briefs cover product features, technical constraints, benefits, audience, pricing, and existing customers. Unknown facts stay empty; important gaps become clarification questions.
 - ICP suggestions include industries, size tiers, buyer roles, and possible buying triggers. Inferences and uncalibrated model confidence are clearly labeled. Users edit and approve both stages.
 - Both AI stages share one Run ID. Provider response IDs and usage are recorded without logging product descriptions.
 - Real loading states, skeletons, motion, mobile layouts, accessible native controls, and reduced-motion support are included.
 - Browser-local workspace persistence and a JSON plan export work without an account. “Try an example” only fills illustrative input; the primary analysis action still makes a real model request.
+
+## Model configuration
+
+Both product briefs and customer profiles use GPT-6.1 Sol through Responses API Structured Outputs, with `reasoning.effort: low`, a 3,000-token output cap that includes reasoning, `service_tier: default`, and explicit 30-minute prompt-cache retention. Unsupported temperature settings are not sent. No fallback silently switches to the old model. Existing browser-saved drafts retain their original model receipts and edits; they are not automatically regenerated or charged after an upgrade. Run a new analysis from the first screen to use the new model.
+
+Official references: [model](https://developers.openai.com/api/docs/models/gpt-6.1-sol), [migration](https://developers.openai.com/api/docs/guides/latest-model/gpt-6-astra.md#migration-quickstart), [pricing](https://developers.openai.com/api/docs/pricing).
 
 ## Website intake (Tavily)
 
@@ -23,9 +29,9 @@ A dedicated **private Vercel Blob** stores one durable ledger. Conditional write
 
 - One fixed 72-hour application window: no reset on deployment, process restart, error, or browser refresh.
 - A $40 **reservation allowance**, with a conservative $0.10 reserved per attempt: at most 400 model dispatches across local and deployed use.
-- The input body is capped at 18 KB; the model and output-token limit are fixed server-side. At verified standard pricing ($0.40 / million input tokens, $1.60 / million output tokens), the bounded maximum request cost fits well below the $0.10 allowance.
+- The input body is capped at 18 KB; the model and output-token limit are fixed server-side. The GPT-6.1 Sol bound uses the actual fixed instructions and JSON schema plus a 2,048-token framing allowance, the maximum 30-minute cache-write input rate ($2.50/million), output including reasoning ($10/million), and a 10% regional cushion. Both stage bounds fit within the unchanged $0.10 reservation. A runtime check fails closed before dispatch if future configuration changes exceed it.
 - Reservations are never refunded on failure, timeout, cancellation, refusal, or unknown outcome. The application may stop before actual API usage reaches $40. Displayed reserved amounts are **not** measured charges.
-- Published-rate cost estimates and provider-reported token counts are stored separately from reservations. They are not billing receipts.
+- Standard-rate estimates account for uncached input ($2/million), cache reads ($0.10/million), 30-minute cache writes ($2.50/million), and output including reasoning ($10/million). Provider-reported token counts and these estimates are stored separately from reservations. They are not billing receipts.
 - Rate limits: 3 attempts per minute and 40 per day per hashed connection identifier; 12 per minute globally. This is a public demo with rate/spend controls, not authenticated user accounts.
 - Tavily has a separate **200-credit application reservation ceiling**, authorized for this demo including testing. Each single-page basic attempt conservatively reserves 1 credit (official pricing is 1 credit per 5 successful URL extractions). At most 200 attempts; actual provider-reported credits are recorded separately. Reservations are never refunded, including failed/unknown attempts. No search/crawl/research endpoint or paid-plan change is enabled. This does not cap use of the key elsewhere or change provider billing settings.
 - Tavily and OpenAI reservations are committed together in the existing ledger, preserving its original fixed cutoff. Redeployments do not reset either allowance. Description-only generation can continue after the Tavily allowance is exhausted, within the OpenAI limits.

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const MODEL = "gpt-4.1-mini-2025-04-14";
+export const MODEL = "gpt-6.1-sol";
 export const MAX_OUTPUT_TOKENS = 3000;
 export const MAX_INPUT_BYTES = 18_000;
 export const RESERVATION_MICROS = 100_000;

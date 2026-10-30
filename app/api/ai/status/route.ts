@@ -1,3 +1,4 @@
+import { MODEL } from "@/lib/ai-schema";
 import { blobLedger } from "@/lib/server/blob-ledger";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -6,6 +7,7 @@ export async function GET() {
     const { ledger } = await blobLedger.read();
     return Response.json(
       {
+        model: MODEL,
         configured: !!process.env.OPENAI_API_KEY,
         websiteConfigured: !!process.env.TAVILY_API_KEY,
         tavilyCreditLimit: 200,
