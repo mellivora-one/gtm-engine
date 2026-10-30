@@ -2121,3 +2121,25 @@ textarea {
 .source-evidence a { color: #2458c8; overflow-wrap: anywhere; }
 .source-evidence summary { cursor: pointer; font-size: .85rem; }
 .source-excerpt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; line-height: 1.6; }
+
+.company-research { margin-top: 3rem; border-top: 1px solid var(--border, #dce5f3); padding-top: 2rem; }
+.results-heading, .company-row-heading { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.results-heading { justify-content: space-between; }
+.company-list { list-style: none; padding: 0; margin-block: 1.5rem; }
+.company-row { padding-block: 1.75rem; border-bottom: 1px solid #dce5f3; }
+.company-row-heading h3 { font-size: 1.2rem; margin: 0; }
+.company-rank { color: #647da4; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.fit-label { color: #2458c8; font-size: .8rem; margin-left: auto; }
+.company-fit { max-width: 75ch; line-height: 1.65; }
+.company-quote { margin: 1rem 0; padding-left: 1rem; border-left: 3px solid #b5cef7; color: #486080; max-width: 85ch; line-height: 1.65; }
+.company-sources { padding-left: 1.25rem; line-height: 1.8; }
+.company-sources a, .all-search-sources a { color: #2458c8; overflow-wrap: anywhere; }
+.research-limitations { padding: 1rem; border-radius: 10px; background: #edf3fd; line-height: 1.65; }
+.all-search-sources { margin-block: 1.5rem; overflow-wrap: anywhere; }
+.all-search-sources summary { cursor: pointer; min-height: 44px; }
+.search-receipt { color: #486080; font-size: .85rem; overflow-wrap: anywhere; }
+.discovery-export { margin-top: 1.5rem; }
+@media (max-width: 600px) { .fit-label { margin-left: 0; } .company-row { padding-block: 1.25rem; } }
+
+.company-row-heading h3 { min-width: 0; overflow-wrap: anywhere; }
+.company-fit, .company-quote { overflow-wrap: anywhere; }

@@ -12,6 +12,7 @@ import {
   type SetStateAction,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { discoveryResultSchema } from "@/lib/discovery";
 import {
   briefResultSchema,
   customerResultSchema,
@@ -89,7 +90,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         throw new Error(data.error || "The AI request could not be completed.");
       return kind === "brief"
         ? briefResultSchema.parse(data)
-        : customerResultSchema.parse(data);
+        : kind === "profile" ? customerResultSchema.parse(data) : discoveryResultSchema.parse(data);
     } catch (error) {
       if (
         error instanceof DOMException &&

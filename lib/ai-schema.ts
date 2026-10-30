@@ -73,7 +73,7 @@ export const sourceSchema = z.object({
 });
 export type BriefResult = BriefAnalysis & { meta: AnalysisMeta; sources?: z.infer<typeof sourceSchema>[] };
 export type CustomerResult = CustomerAnalysis & { meta: AnalysisMeta };
-const metaSchema = z.object({
+export const metaSchema = z.object({
   runId: z.uuid(),
   requestId: z.uuid(),
   responseId: z.string(),
@@ -82,7 +82,7 @@ const metaSchema = z.object({
 });
 export const briefResultSchema = briefSchema.extend({ meta: metaSchema, sources: z.array(sourceSchema).max(1).optional() });
 export const customerResultSchema = customerSchema.extend({ meta: metaSchema });
-export type AIKind = "brief" | "profile";
+export type AIKind = "brief" | "profile" | "discover";
 
 const ids = { runId: z.uuid(), requestId: z.uuid() };
 export const briefInputSchema = z.object({

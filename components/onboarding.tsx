@@ -29,6 +29,8 @@ import {
   type CustomerResult,
 } from "@/lib/ai-schema";
 
+import { discoveryResultSchema, defaultDiscoveryQuery, discoveryContext } from "@/lib/discovery";
+
 type Page = "intake" | "brief" | "customers" | "discover";
 const steps = ["Product brief", "Ideal customers", "Discover leads"];
 
@@ -234,7 +236,7 @@ export function Onboarding({ page }: { page: Page }) {
     customers:
       "Start with a clear profile. Choose the customers you want to reach.",
     discover:
-      "Your customer profile is confirmed. Choose a small first search to review.",
+      "Search public sources for companies that may fit your confirmed customer profile.",
   };
   return (
     <div className="app-shell">
@@ -377,17 +379,17 @@ export function Onboarding({ page }: { page: Page }) {
                     <h2>
                       {aiBusy === "brief"
                         ? "Understanding your product"
-                        : "Defining your ideal customers"}
+                        : aiBusy === "profile" ? "Defining your ideal customers" : "Finding company candidates"}
                     </h2>
                     <p>
-                      {aiBusy === "brief" && state.intake.url.trim()
+                      {aiBusy === "discover" ? "Tavily is searching public sources. Sol will assess company fit using only the returned evidence." : aiBusy === "brief" && state.intake.url.trim()
                         ? "Tavily is reading your website, then OpenAI will draft your brief. This can take up to a minute."
                         : "OpenAI is generating a structured draft from your information."}
                     </p>
                   </div>
                 </div>
                 <WorkspaceSkeleton
-                  variant={aiBusy === "profile" ? "customers" : "brief"}
+                  variant={aiBusy === "discover" ? "discover" : aiBusy === "profile" ? "customers" : "brief"}
                 />
               </section>
               <div hidden={!!aiBusy}>
@@ -413,7 +415,7 @@ export function Onboarding({ page }: { page: Page }) {
                 : "Browser storage unavailable · Changes last for this visit"}
             </span>
             <span>
-              Optional website reading via Tavily. No lead discovery or sending.
+              Public-source research via Tavily. No contact enrichment or sending.
             </span>
           </footer>
         </main>
@@ -1258,203 +1260,113 @@ function Customers() {
 }
 
 function Discover() {
-  const { state, setState } = useWorkspace();
+  const { state, setState, requestAI, aiBusy } = useWorkspace();
+  const [query, setQuery] = useState(state.search.query || defaultDiscoveryQuery(state.profile, state.search.focus));
+  const [error, setError] = useState("");
   const [planOpen, setPlanOpen] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
-  function download() {
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(exportPlan(state), null, 2)], {
-        type: "application/json",
-      }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "gtm-discovery-plan.json";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setDownloaded(true);
+  const resultRef = useRef<HTMLHeadingElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const settings = { ...state.search, query: query.trim() };
+  const context = discoveryContext(state.product, state.profile, settings);
+  const research = state.customersConfirmed && context === state.discoveryContext ? state.discoveryAnalysis : undefined;
+  function updateQuery(value: string) {
+    setQuery(value); setError("");
+    setState(previous => ({ ...previous, search: { ...previous.search, query: value } }));
   }
-  return (
-    <>
-      <div className="status-row">
-        <Status>Ready to plan</Status>
-        <span className="subtle-label">Live discovery is not connected</span>
-      </div>
+  async function search(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError("");
+    try {
+      if (!context) throw new Error("Confirm your customer profile and enter a search query of 8–300 characters.");
+      const { website: ignored, ...product } = state.product; void ignored;
+      const result = discoveryResultSchema.parse(await requestAI("discover", {
+        runId: state.runId ?? crypto.randomUUID(), product, profile: state.profile, search: settings,
+      }));
+      setState(previous => ({ ...previous, runId: result.meta.runId, search: settings,
+        discoveryAnalysis: result, discoveryContext: context }));
+      requestAnimationFrame(() => resultRef.current?.focus());
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "The search could not be completed.");
+      requestAnimationFrame(() => errorRef.current?.focus());
+    }
+  }
+  function download() {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(exportPlan({ ...state, search: settings }), null, 2)], { type: "application/json" }));
+    const link = document.createElement("a"); link.href = url;
+    link.download = research ? "gtm-company-discovery.json" : "gtm-discovery-plan.json";
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); setDownloaded(true);
+  }
+  return <>
+    <div className="status-row"><Status>{research ? "Search complete · Review candidates" : "Ready to search"}</Status><span className="subtle-label">Tavily Search + GPT-6.1 Sol</span></div>
+    <form onSubmit={search} aria-busy={!!aiBusy}>
       <div className="two-column">
         <section className="form-stack" aria-label="Discovery settings">
-          <h2>Discovery settings</h2>
-          <Field
-            id="count"
-            label="Companies to find"
-            hint="Start small. Review the matches before expanding."
-          >
-            <select
-              id="count"
-              name="companyCount"
-              value={state.search.count}
-              onChange={(event) =>
-                setState((previous) => ({
-                  ...previous,
-                  search: { ...previous.search, count: event.target.value },
-                }))
-              }
-            >
-              <option value="5">5 companies</option>
-              <option value="10">10 companies</option>
-              <option value="25">25 companies</option>
+          <h2>Find company candidates</h2>
+          <Field id="count" label="Maximum companies" hint="Small batches keep research reviewable. Fewer may match the available evidence.">
+            <select id="count" name="companyCount" value={state.search.count} onChange={event => setState(previous => ({ ...previous, search: { ...previous.search, count: event.target.value } }))}>
+              <option value="5">Up to 5 companies</option><option value="10">Up to 10 companies</option>
             </select>
           </Field>
           <Field id="focus" label="Research focus">
-            <select
-              id="focus"
-              name="researchFocus"
-              value={state.search.focus}
-              onChange={(event) =>
-                setState((previous) => ({
-                  ...previous,
-                  search: { ...previous.search, focus: event.target.value },
-                }))
-              }
-            >
-              <option>Product fit and buying signals</option>
-              <option>Product fit</option>
-              <option>Recent buying signals</option>
-            </select>
+            <select id="focus" name="researchFocus" value={state.search.focus} onChange={event => {
+              const focus = event.target.value;
+              const nextQuery = defaultDiscoveryQuery(state.profile, focus); setQuery(nextQuery); setError("");
+              setState(previous => ({ ...previous, search: { ...previous.search, focus, query: nextQuery } }));
+            }}><option>Product fit and buying signals</option><option>Product fit</option><option>Recent buying signals</option></select>
           </Field>
-          <div className="returns">
-            <h2>What live discovery will return</h2>
-            <p className="hint">
-              Planned integration · Not available in this prototype
-            </p>
-            <ul>
-              {[
-                "Company names and websites",
-                "Buyer names and roles, when publicly available",
-                "Fit explanations and source links",
-              ].map((item) => (
-                <li key={item}>
-                  <span className="check-icon">
-                    <Icon name="check" size={16} />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="enrichment">
-            <h3>
-              Business email enrichment{" "}
-              <span className="optional">(optional)</span>
-            </h3>
-            <div className="switch-row">
-              <input
-                type="checkbox"
-                role="switch"
-                aria-label="Business email enrichment, not connected"
-                disabled
-              />
-              <span>Off. Not connected; requires separate approval.</span>
-            </div>
-          </div>
+          <Field id="discovery-query" label="Search query" hint="Review what we send to Tavily. The small-SaaS default starts with YC company pages; edit the query to broaden or change sources.">
+            <textarea id="discovery-query" name="query" required minLength={8} maxLength={300} rows={3} value={query} onChange={event => updateQuery(event.target.value)} aria-describedby="discovery-query-hint" />
+          </Field>
+          <div className="prototype-note">Your query is sent to Tavily. Your approved brief, criteria, and public search snippets are sent to OpenAI to assess fit. One basic search per click; no automatic retries. Do not include secrets or private contact details.</div>
+          <div className="info-line"><Icon name="info" /><p>These are company candidates, not verified buyers. Operating status, company size, current event attendance, and purchase intent may be unknown.</p></div>
+          <div className="enrichment"><h3>Contact enrichment and outreach</h3><p className="hint">Not connected. No people, email addresses, or messages are requested.</p></div>
         </section>
         <aside className="context-panel">
-          <h2>Confirmed customer profile</h2>
-          <Status approved>Approved</Status>
+          <h2>Confirmed customer profile</h2><Status approved>Approved</Status>
           <dl className="profile-list">
-            <div>
-              <dt>Industry</dt>
-              <dd>{state.profile.industry}</dd>
-            </div>
-            <div>
-              <dt>Company size</dt>
-              <dd>{state.profile.size || "Any size"}</dd>
-            </div>
-            <div>
-              <dt>Location</dt>
-              <dd>{state.profile.location || "Any location"}</dd>
-            </div>
-            <div>
-              <dt>Buyer roles</dt>
-              <dd>
-                {state.profile.roles.map((role) => (
-                  <span key={role}>{role}</span>
-                ))}
-              </dd>
-            </div>
-            {state.profile.signals.length > 0 && (
-              <div>
-                <dt>Signals</dt>
-                <dd>{state.profile.signals.join(", ")}</dd>
-              </div>
-            )}
-            {state.profile.exclusions && (
-              <div>
-                <dt>Exclusions</dt>
-                <dd>{state.profile.exclusions}</dd>
-              </div>
-            )}
+            <div><dt>Industry</dt><dd>{state.profile.industry}</dd></div>
+            <div><dt>Company size</dt><dd>{state.profile.size || "Any size"}</dd></div>
+            <div><dt>Location</dt><dd>{state.profile.location || "Any location"}</dd></div>
+            <div><dt>Buyer roles</dt><dd>{state.profile.roles.join(", ")}</dd></div>
+            {state.profile.signals.length > 0 && <div><dt>Desired signals · Not observed</dt><dd>{state.profile.signals.join(", ")}</dd></div>}
+            {state.profile.exclusions && <div><dt>Exclusions</dt><dd>{state.profile.exclusions}</dd></div>}
           </dl>
-          <p className="small">
-            Based on your confirmed product:
-            <br />
-            <strong>{state.product.name}</strong>
-          </p>
-          <Link href="/customers" className="text-link">
-            Edit customer profile
-          </Link>
+          <p className="small">Product: <strong>{state.product.name}</strong></p>
+          <Link href="/customers" className="text-link">Edit customer profile</Link>
         </aside>
       </div>
-      <Actions
-        back="/customers"
-        backLabel="Back to customers"
-        note="Preview and export your plan. No live search, charges, or outreach."
-      >
-        <button
-          type="button"
-          className="button primary"
-          onClick={() => {
-            setDownloaded(false);
-            setPlanOpen(true);
-          }}
-        >
-          Preview discovery plan <Icon name="arrow" />
-        </button>
+      {error && <p className="form-error" role="alert" tabIndex={-1} ref={errorRef}>{error}</p>}
+      {state.discoveryAnalysis && !research && <p className="notice">Your criteria or query changed. Run a new search; previous results are not treated as matches or included in exports.</p>}
+      <Actions back="/customers" backLabel="Back to customers" note="Search uses the existing demo allowances. Review sources before acting; no outreach is sent.">
+        <button className="button primary" type="submit" disabled={!!aiBusy}>{research ? "Search again" : "Find companies"} <Icon name="arrow" /></button>
       </Actions>
-      {planOpen && (
-        <Modal
-          title="Your discovery plan is ready"
-          onClose={() => setPlanOpen(false)}
-        >
-          <Status>Plan only · No research performed</Status>
-          <p>
-            Find up to{" "}
-            <strong>
-              {state.search.count} {state.profile.industry} companies
-            </strong>{" "}
-            matching your approved profile, with a focus on{" "}
-            {state.search.focus.toLowerCase()}.
-          </p>
-          <div className="notice">
-            <Icon name="info" />
-            <p>
-              Live search and email enrichment are not connected yet. This
-              export contains your product brief, customer criteria, and search
-              settings—not leads.
-            </p>
-          </div>
-          <button className="button primary full-width" onClick={download}>
-            <Icon name="download" />
-            {downloaded ? "Download again" : "Download plan (.json)"}
-          </button>
-          <p className="hint" role="status">
-            {downloaded
-              ? "Download requested. Check your browser’s downloads."
-              : "No information is sent to another service."}
-          </p>
-        </Modal>
-      )}
-    </>
-  );
+    </form>
+    {research && <section className="company-research" aria-labelledby="company-results-heading">
+      <div className="results-heading"><div><p className="eyebrow">PUBLIC-SOURCE COMPANY RESEARCH</p><h2 id="company-results-heading" tabIndex={-1} ref={resultRef}>{research.leads.length} company candidates</h2></div><span className="status">AI fit assessment · Not verified intent</span></div>
+      <p className="hint">Search performed {new Date(research.searchedAt).toLocaleString()}. Search-index snippets may be cached or incomplete. Links and quotes are checked against the retrieved sources, not independently fact-checked.</p>
+      <p className="search-receipt">Query: {research.query}</p>
+      {research.leads.length === 0 && <p className="notice">No source-backed companies matched this search. Try a broader query; we have not filled the list with invented leads.</p>}
+      <ol className="company-list">{research.leads.map((lead, index) => <li key={lead.companyName}>
+        <article className="company-row"><div className="company-row-heading"><span className="company-rank">{String(index + 1).padStart(2, "0")}</span><h3>{lead.companyName}</h3><span className="fit-label">AI fit: {lead.fit}</span></div>
+          <p className="company-fit">{lead.fitReason}</p>
+          <blockquote className="company-quote">“{lead.evidenceQuote}”</blockquote>
+          <ul className="company-sources">{lead.sourceIds.map(id => { const source = research.sources.find(s => s.id === id); return source ? <li key={id}><a href={source.url} target="_blank" rel="noopener noreferrer">[{id}] {source.title || new URL(source.url).hostname} ↗</a></li> : null; })}</ul>
+          {lead.gaps.length > 0 && <p className="hint"><strong>Still to verify:</strong> {lead.gaps.join(" · ")}</p>}
+        </article>
+      </li>)}</ol>
+      {research.limitations.length > 0 && <div className="research-limitations"><h3>Research limitations</h3><ul>{research.limitations.map(item => <li key={item}>{item}</li>)}</ul></div>}
+      <details className="all-search-sources"><summary>All {research.sources.length} retrieved sources</summary><ul>{research.sources.map(source => <li key={source.id}><a href={source.url} target="_blank" rel="noopener noreferrer">[{source.id}] {source.title}</a><p className="hint">{source.excerpt}</p>{(source.operatingStatus || source.teamSize !== undefined) && <p className="hint">Source-reported metadata: {source.operatingStatus || "status unknown"}{source.teamSize !== undefined ? ` · Team size: ${source.teamSize}` : ""}. Not independently verified.</p>}</li>)}</ul></details>
+      <p className="analysis-receipt">{research.meta.model} · Run: {research.meta.runId}<br />Tavily request: {research.searchRequestId}</p>
+    </section>}
+    <div className="discovery-export"><button type="button" className="button secondary" onClick={() => { setDownloaded(false); setPlanOpen(true); }}>{research ? "Preview / export research" : "Preview / export plan"}</button></div>
+    {planOpen && <Modal title={research ? "Export company research" : "Your discovery plan"} onClose={() => setPlanOpen(false)}>
+      <Status>{research ? `${research.leads.length} sourced company candidates` : "Plan only · No company search in this export"}</Status>
+      <p>{research ? "Export includes company candidates, fit assessments, source links, search query, and run receipts alongside your confirmed brief and criteria." : "Export your product brief, approved customer criteria, and search settings without making a paid request."}</p>
+      <p className="hint">No contact enrichment or outreach has been performed.</p>
+      <button className="button primary full-width" onClick={download}><Icon name="download" />{downloaded ? "Download again" : "Download JSON"}</button>
+      <p className="hint" role="status">{downloaded ? "Download requested. Check your browser’s downloads." : "Downloading makes no new API call."}</p>
+    </Modal>}
+  </>;
 }
 
 function Modal({

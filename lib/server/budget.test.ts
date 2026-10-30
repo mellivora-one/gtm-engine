@@ -150,7 +150,7 @@ test("unavailable storage and persistent conflicts fail closed", async () => {
 });
 
 test("Sol request compatibility and worst-case cost stay inside the unchanged reservation", () => {
-  for (const kind of ["brief", "profile"] as const) {
+  for (const kind of ["brief", "profile", "discover"] as const) {
     const options = analysisOptions(kind);
     assert.equal(options.model, "gpt-6.1-sol");
     assert.equal(options.reasoning.effort, "low");

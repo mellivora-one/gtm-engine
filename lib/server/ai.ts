@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import { discoveryInputSchema, discoverySchema, groundLeads, type SearchSource } from "../discovery.ts";
+import { searchCompanies } from "./search.ts";
 import { createHmac } from "node:crypto";
 import {
   briefInputSchema,
@@ -76,16 +78,17 @@ export async function handleAnalysis(
     const parsed =
       kind === "brief"
         ? briefInputSchema.safeParse(json)
-        : customerInputSchema.safeParse(json);
+        : kind === "profile" ? customerInputSchema.safeParse(json) : discoveryInputSchema.safeParse(json);
     if (!parsed.success)
       throw new GateError(
         "invalid_input",
         400,
         kind === "brief"
           ? "Add a public product website URL or at least 20 characters describing the product."
-          : "Please provide a product name and description before generating customers.",
+          : kind === "profile" ? "Please provide a product name and description before generating customers." : "Confirm your product and customer criteria, and enter a search query of 8–300 characters.",
       );
     const input = parsed.data;
+    const discoveryInput = kind === "discover" ? discoveryInputSchema.parse(json) : undefined;
     let website = "";
     if ("url" in input) {
       if (input.url.trim()) website = await validateWebsite(input.url);
@@ -94,7 +97,11 @@ export async function handleAnalysis(
       if (website && !process.env.TAVILY_API_KEY)
         throw new GateError("tavily_not_configured", 503, "Website reading is not configured. Remove the link to use a description, or continue manually.");
     }
-    const data = "product" in input
+    if (kind === "discover" && !process.env.TAVILY_API_KEY)
+      throw new GateError("tavily_not_configured", 503, "Company search is not configured. You can still export your plan.");
+    const data = discoveryInput
+      ? { confirmedProduct: discoveryInput.product, confirmedProfile: discoveryInput.profile, requestedCount: Number(discoveryInput.search.count), focus: discoveryInput.search.focus }
+      : "product" in input
       ? { confirmedProduct: input.product }
       : { description: input.description };
     let userText = JSON.stringify(data);
@@ -124,10 +131,12 @@ export async function handleAnalysis(
       id: reservationId,
       runId: input.runId,
       actor,
-      kind,
+      // Discovery profiles retrieved companies. Keep the legacy ledger kind
+      // compatible; the unique :discover: ID identifies the actual stage.
+      kind: kind === "discover" ? "profile" : kind,
       at: started,
       status: "reserved",
-      ...(website ? { tavilyReservedCredits: 1 as const } : {}),
+      ...((website || kind === "discover") ? { tavilyReservedCredits: 1 as const } : {}),
     });
     reserved = true;
     const sources: NonNullable<BriefResult["sources"]> = [];
@@ -149,6 +158,20 @@ export async function handleAnalysis(
         provider: "Tavily Extract", excerpt: content.slice(0, 1200),
         truncated: extraction.truncated || content.length < extraction.content.length });
       console.info("website_extraction_completed", { runId: input.runId, requestId: extraction.requestId, credits: extraction.credits });
+    }
+    let searchEvidence: SearchSource[] = [];
+    let searchMeta: { query: string; searchedAt: string; searchRequestId: string } | undefined;
+    if (discoveryInput) {
+      const result = await searchCompanies(discoveryInput.search.query, request.signal);
+      await settle(blobLedger, reservationId, { tavilyRequestId: result.requestId, tavilyReportedCredits: result.credits });
+      searchEvidence = result.sources;
+      // Only sources actually shown to the model may back a returned company.
+      while (searchEvidence.length && Buffer.byteLength(JSON.stringify({ ...data, searchEvidence })) > MAX_INPUT_BYTES)
+        searchEvidence = searchEvidence.slice(0, -1);
+      if (!searchEvidence.length) throw new GateError("too_large", 413, "Shorten your product or customer criteria to leave room for search evidence.");
+      userText = JSON.stringify({ ...data, searchEvidence });
+      searchMeta = { query: discoveryInput.search.query, searchedAt: result.searchedAt, searchRequestId: result.requestId };
+      console.info("company_search_completed", { runId: input.runId, requestId: result.requestId, credits: result.credits, sourceCount: searchEvidence.length });
     }
     const client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -184,7 +207,8 @@ export async function handleAnalysis(
     const output =
       kind === "brief"
         ? briefSchema.parse(response.output_parsed)
-        : customerSchema.parse(response.output_parsed);
+        : kind === "profile" ? customerSchema.parse(response.output_parsed)
+        : groundLeads(discoverySchema.parse(response.output_parsed), searchEvidence, discoveryInput?.product.name ?? "", Number(discoveryInput?.search.count ?? "5"), discoveryInput?.profile.size);
     console.info("ai_analysis_completed", {
       runId: input.runId,
       requestId: input.requestId,
@@ -201,7 +225,7 @@ export async function handleAnalysis(
     return Response.json(
       {
         ...output,
-        ...(kind === "brief" ? { sources } : {}),
+        ...(kind === "brief" ? { sources } : kind === "discover" ? { sources: searchEvidence, ...searchMeta } : {}),
         meta: {
           runId: input.runId,
           requestId: input.requestId,

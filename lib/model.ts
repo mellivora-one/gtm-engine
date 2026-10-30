@@ -1,3 +1,4 @@
+import { discoveryResultSchema, discoveryContext, type DiscoveryResult } from "./discovery.ts";
 import {
   briefResultSchema,
   customerResultSchema,
@@ -33,10 +34,12 @@ export type Workspace = {
   runId?: string;
   briefAnalysis?: BriefResult;
   customerAnalysis?: CustomerResult;
+  discoveryAnalysis?: DiscoveryResult;
+  discoveryContext?: string;
   drafted: boolean;
   productConfirmed: boolean;
   customersConfirmed: boolean;
-  search: { count: string; focus: string };
+  search: { count: string; focus: string; query?: string };
 };
 export const STORAGE_KEY = "gtm-engine:workspace:v1";
 export const emptyWorkspace: Workspace = {
@@ -65,7 +68,7 @@ export const emptyWorkspace: Workspace = {
   drafted: false,
   productConfirmed: false,
   customersConfirmed: false,
-  search: { count: "10", focus: "Product fit and buying signals" },
+  search: { count: "5", focus: "Product fit and buying signals" },
 };
 export const exampleWorkspace: Workspace = {
   ...emptyWorkspace,
@@ -176,12 +179,12 @@ export function restoreWorkspace(value: unknown): Workspace {
     item && typeof item === "object" ? (item as Record<string, unknown>) : {};
   const text = (item: unknown) =>
     typeof item === "string" ? item.slice(0, 8000) : "";
-  const list = (item: unknown) =>
+  const list = (item: unknown, maximum = 100) =>
     Array.isArray(item)
       ? item
           .filter((entry): entry is string => typeof entry === "string")
           .slice(0, 12)
-          .map((entry) => entry.slice(0, 100))
+          .map((entry) => entry.slice(0, maximum))
       : [];
   const intake = record(raw.intake),
     product = record(raw.product),
@@ -206,7 +209,7 @@ export function restoreWorkspace(value: unknown): Workspace {
       size: text(profile.size),
       location: text(profile.location),
       roles: list(profile.roles),
-      signals: list(profile.signals),
+      signals: list(profile.signals, 140),
       exclusions: text(profile.exclusions),
     },
     source:
@@ -221,13 +224,16 @@ export function restoreWorkspace(value: unknown): Workspace {
         : undefined,
     briefAnalysis: briefResultSchema.safeParse(raw.briefAnalysis).data,
     customerAnalysis: customerResultSchema.safeParse(raw.customerAnalysis).data,
+    discoveryAnalysis: discoveryResultSchema.safeParse(raw.discoveryAnalysis).data,
+    discoveryContext: typeof raw.discoveryContext === "string" ? raw.discoveryContext.slice(0, 18000) : undefined,
     drafted: raw.drafted === true,
     productConfirmed: raw.productConfirmed === true,
     customersConfirmed: raw.customersConfirmed === true,
     search: {
-      count: ["5", "10", "25"].includes(text(search.count))
+      query: text(search.query).slice(0, 300),
+      count: ["5", "10"].includes(text(search.count))
         ? text(search.count)
-        : "10",
+        : "5",
       focus: [
         "Product fit and buying signals",
         "Product fit",
@@ -250,10 +256,16 @@ export function restoreWorkspace(value: unknown): Workspace {
   return restored;
 }
 
+export function currentDiscovery(state: Workspace): DiscoveryResult | undefined {
+  const context = discoveryContext(state.product, state.profile, state.search);
+  return state.customersConfirmed && context && context === state.discoveryContext ? state.discoveryAnalysis : undefined;
+}
+
 export function exportPlan(state: Workspace) {
+  const research = currentDiscovery(state);
   return {
     schemaVersion: 1,
-    mode: state.briefAnalysis
+    mode: research ? "company-discovery-results" : state.briefAnalysis
       ? "ai-assisted-search-plan"
       : "manual-search-plan",
     generatedAt: new Date().toISOString(),
@@ -264,8 +276,9 @@ export function exportPlan(state: Workspace) {
       product: state.productConfirmed,
       customers: state.customersConfirmed,
     },
-    liveResearchPerformed: !!state.briefAnalysis?.sources?.length,
-    prospectDiscoveryPerformed: false,
+    liveResearchPerformed: !!state.briefAnalysis?.sources?.length || !!research,
+    prospectDiscoveryPerformed: !!research,
+    companyResearch: research,
     enrichmentPerformed: false,
     messagesSent: 0,
     ai: { brief: state.briefAnalysis, customerProfile: state.customerAnalysis },

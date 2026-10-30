@@ -62,6 +62,7 @@ test("invalid origin, payload, oversized body and unsafe URL never reach the spe
     for (const url of ["http://127.0.0.1", "https://linkedin.com/in/person"]) {
       assert.equal((await handleAnalysis(request({ ...valid, url }), "brief")).status, 400);
     }
+    assert.equal((await handleAnalysis(request({ runId: crypto.randomUUID(), requestId: crypto.randomUUID(), search: { query: "x", count: "25" } }), "discover")).status, 400);
     assert.equal(reads, 0);
   } finally {
     blobLedger.read = read;

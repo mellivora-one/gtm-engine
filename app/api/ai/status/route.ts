@@ -8,6 +8,7 @@ export async function GET() {
     return Response.json(
       {
         model: MODEL,
+        companyDiscoveryConfigured: !!process.env.TAVILY_API_KEY && !!process.env.OPENAI_API_KEY,
         configured: !!process.env.OPENAI_API_KEY,
         websiteConfigured: !!process.env.TAVILY_API_KEY,
         tavilyCreditLimit: 200,
