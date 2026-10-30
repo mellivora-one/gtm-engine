@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test lib/model.test.ts lib/server/budget.test.ts lib/server/ai.test.ts lib/server/website.test.ts lib/server/search.test.ts"
+    "test": "node --experimental-strip-types --test lib/model.test.ts lib/server/budget.test.ts lib/server/ai.test.ts lib/server/website.test.ts lib/server/search.test.ts lib/prospecting.test.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
