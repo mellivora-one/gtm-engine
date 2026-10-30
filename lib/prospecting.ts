@@ -3,7 +3,7 @@ import type { DiscoveryResult } from "./discovery.ts";
 
 export const publishedEmailSchema = z.object({ email: z.email().max(254), quote: z.string().max(240) });
 export const contactResearchSchema = z.object({
-  companyName: z.string().max(100), searchedAt: z.string().datetime(), requestId: z.string().max(200),
+  companyName: z.string().max(100), companyWebsite: z.url().max(2000), searchedAt: z.string().datetime(), requestId: z.string().max(200),
   contacts: z.array(publishedEmailSchema.extend({ sourceUrl: z.url().max(2000) })).max(5),
   sources: z.array(z.object({ url: z.url().max(2000), title: z.string().max(180) })).max(20),
 });
