@@ -30,7 +30,7 @@ import {
   type CustomerResult,
 } from "@/lib/ai-schema";
 
-import { discoveryResultSchema, defaultDiscoveryQuery, discoveryContext } from "@/lib/discovery";
+import { discoveryResultSchema, defaultDiscoveryQuery, resolvedDiscoveryQuery, discoveryContext } from "@/lib/discovery";
 
 type Page = "intake" | "brief" | "customers" | "discover";
 const steps = ["Product brief", "Ideal customers", "Discover leads"];
@@ -1261,7 +1261,7 @@ function Customers() {
 
 function Discover() {
   const { state, setState, requestAI, aiBusy } = useWorkspace();
-  const [query, setQuery] = useState(state.search.query || defaultDiscoveryQuery(state.profile, state.search.focus));
+  const query = resolvedDiscoveryQuery(state.profile, state.search);
   const [error, setError] = useState("");
   const [planOpen, setPlanOpen] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -1271,8 +1271,8 @@ function Discover() {
   const context = discoveryContext(state.product, state.profile, settings);
   const research = state.customersConfirmed && context === state.discoveryContext ? state.discoveryAnalysis : undefined;
   function updateQuery(value: string) {
-    setQuery(value); setError("");
-    setState(previous => ({ ...previous, search: { ...previous.search, query: value } }));
+    setError("");
+    setState(previous => ({ ...previous, search: { ...previous.search, query: value, queryMode: "manual" } }));
   }
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError("");
@@ -1310,13 +1310,14 @@ function Discover() {
           <Field id="focus" label="Research focus">
             <select id="focus" name="researchFocus" value={state.search.focus} onChange={event => {
               const focus = event.target.value;
-              const nextQuery = defaultDiscoveryQuery(state.profile, focus); setQuery(nextQuery); setError("");
-              setState(previous => ({ ...previous, search: { ...previous.search, focus, query: nextQuery } }));
+              setError("");
+              setState(previous => ({ ...previous, search: { ...previous.search, focus } }));
             }}><option>Product fit and buying signals</option><option>Product fit</option><option>Recent buying signals</option></select>
           </Field>
-          <Field id="discovery-query" label="Search query" hint="Review what we send to Tavily. The small-SaaS default starts with YC company pages; edit the query to broaden or change sources.">
+          <Field id="discovery-query" label="Search query" hint="Built from your industry, location and research focus. Size, buyer roles and unobserved signals stay in the fit assessment. You can edit this query.">
             <textarea id="discovery-query" name="query" required minLength={8} maxLength={300} rows={3} value={query} onChange={event => updateQuery(event.target.value)} aria-describedby="discovery-query-hint" />
           </Field>
+          <button type="button" className="text-link" onClick={()=>{setError("");setState(previous=>({...previous,search:{...previous.search,query:"",queryMode:"auto"}}));}}>Regenerate query from customer profile</button>
           <div className="prototype-note">Your query is sent to Tavily. Your approved brief, criteria, and public search snippets are sent to OpenAI to assess fit. One basic search per click; no automatic retries. Do not include secrets or private contact details.</div>
           <div className="info-line"><Icon name="info" /><p>These are company candidates, not verified buyers. Operating status, company size, current event attendance, and purchase intent may be unknown.</p></div>
           <div className="enrichment"><h3>Contact enrichment and outreach</h3><p className="hint">After discovery, research published company emails, explore their source-backed graph, and review editable drafts. Sending is not connected.</p></div>

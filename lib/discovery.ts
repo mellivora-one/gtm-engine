@@ -44,13 +44,36 @@ export type DiscoveryResult = z.infer<typeof discoveryResultSchema>;
 export type SearchSource = z.infer<typeof searchSourceSchema>;
 export type DiscoveryInput = z.infer<typeof discoveryInputSchema>;
 
-export function defaultDiscoveryQuery(profile: Pick<z.infer<typeof profileSchema>, "industry" | "location"> & { size?: string }, focus: string): string {
-  // Start broad enough to find named companies. Size and buying triggers are
-  // assessed from evidence, never assumed because they appear in the query.
-  if (/saas/i.test(profile.industry) && /1–10|11–50/.test(profile.size ?? "") && focus !== "Recent buying signals")
-    return "site:ycombinator.com/companies B2B SaaS software";
-  const terms = `${profile.industry} startup companies ${profile.location} ${focus === "Recent buying signals" ? "recent funding expansion hiring" : "products customers"}`;
-  return terms.replace(/\s+/g, " ").trim().slice(0, 300);
+type QueryProfile = Pick<z.infer<typeof profileSchema>, "industry" | "location"> & { size?: string; signals?: string[] };
+function searchPhrase(value: string, maximum: number): string {
+  return value.normalize("NFKC")
+    .replace(/^\s*(?:(?:suggested|inferred|potential|recommended|target)(?:\s+(?:industry|customers|segment|companies))?\s*[:–—-]\s*)+/i, "")
+    .split(/[;.!?]|\b(?:that|which|who|seeking|looking|preparing|requiring|attending|using|with)\b/i)[0]
+    .replace(/[^\p{L}\p{N}&/ -]/gu, " ").replace(/[-/]/g," ")
+    .trim().split(/\s+/).slice(0,maximum).join(" ");
+}
+export function defaultDiscoveryQuery(profile: QueryProfile, focus: string): string {
+  // Select business nouns, not the full ICP paragraph. Keep size, personas and
+  // unobserved triggers in the fit assessment instead of AND-ing them into search.
+  let industry=searchPhrase(profile.industry,10);
+  if (/^(?:unknown|unspecified|any|not (?:specified|established)|no specific|to be confirmed)\b/i.test(industry)) industry="";
+  const generic=!industry || /^(?:B2B |B2C )?(?:companies|businesses|organizations)$/i.test(industry);
+  let base=industry || "companies";
+  if(!/\b(?:companies|businesses|firms|manufacturers|contractors|agencies|retailers|brands|clinics|hospitals|providers|studios|shops|distributors|organizations|restaurants|hotels)\b/i.test(base)) base+=" companies";
+  let location=searchPhrase(profile.location,5);
+  if(/^(?:any|all|global|worldwide|unknown|unspecified|no (?:restriction|preference)|not specified)\b/i.test(location))location="";
+  let intent=generic?"directory":"";
+  if(focus==="Recent buying signals") {
+    const signals=(profile.signals??[]).join(" ");
+    intent=/funding|investment|raised/i.test(signals)?"funding":/hiring|recruit/i.test(signals)?"hiring":/expan|new market/i.test(signals)?"expansion":"company news";
+  }
+  return [base,location,intent].filter(Boolean).join(" ").replace(/\s+/g," ").trim().slice(0,220);
+}
+export function resolvedDiscoveryQuery(profile: QueryProfile, search: {query?:string; queryMode?:"auto"|"manual";focus:string}): string {
+  if(search.queryMode==="manual")return search.query ?? "";
+  // Repair legacy generated paragraphs, but preserve old explicit/site queries.
+  const legacy=search.queryMode===undefined && search.query?.trim() && !/^suggested\s*:/i.test(search.query) && !/startup companies.*(?:products customers|recent funding expansion hiring)$/i.test(search.query);
+  return legacy?search.query!:defaultDiscoveryQuery(profile,search.focus);
 }
 export function discoveryContext(product: unknown, profile: unknown, search: unknown): string {
   try { return JSON.stringify({ product: productSchema.parse(product), profile: profileSchema.parse(profile), search: discoverySearchSchema.parse(search) }); }

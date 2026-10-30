@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { publishedEmails, relationshipGraph } from "./prospecting.ts";
-import { meterResearch } from "./server/flexprice.ts";
+import { meterResearch, usageForSearch } from "./server/flexprice.ts";
 import { validatePostmark } from "./server/postmark.ts";
 import { researchContacts } from "./server/contacts.ts";
 
@@ -35,4 +35,14 @@ test("real demo sending rejects a wrong access code before spending",async()=>{
 test("usage recording rejects foreign origins and malformed runs before external access",async()=>{
  const url="https://app.example/api/usage/flexprice";assert.equal((await meterResearch(new Request(url,{method:"POST",headers:{origin:"https://evil.example"},body:"{}"}))).status,403);
  assert.equal((await meterResearch(new Request(url,{method:"POST",headers:{origin:"https://app.example","Content-Type":"application/json"},body:"{}"}))).status,400);
+});
+
+test("usage identity follows the exact search and reuses legacy receipts without resending",()=>{
+ const run=crypto.randomUUID(),first=crypto.randomUUID(),second=crypto.randomUUID();
+ const base={runId:run,actor:"test",kind:"profile" as const,at:1,status:"completed" as const};
+ const ledger={version:2 as const,startsAt:0,endsAt:100,budgetMicros:40000000 as const,reservationMicros:100000 as const,reservations:[{...base,id:`${run}:discover:${first}`,inputTokens:10},{...base,id:`${run}:discover:${second}`,inputTokens:20},{...base,id:`${run}:flexprice:company-discovery`}]};
+ assert.equal(usageForSearch(ledger,run,first).alreadyRecorded,true);
+ const next=usageForSearch(ledger,run,second);assert.equal(next.alreadyRecorded,false);assert.equal(next.completed.inputTokens,20);assert.equal(next.eventId,`gtm-discovery-${second}`);
+ assert.throws(()=>usageForSearch(ledger,run,crypto.randomUUID()),/exact completed search/);
+ ledger.reservations.push({...base,id:next.id});assert.equal(usageForSearch(ledger,run,second).alreadyRecorded,true);
 });

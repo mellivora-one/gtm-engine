@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { searchCompanies } from "./search.ts";
-import { groundLeads, discoveryContext, type DiscoveryResult, type SearchSource } from "../discovery.ts";
+import { groundLeads, discoveryContext, defaultDiscoveryQuery, resolvedDiscoveryQuery, type DiscoveryResult, type SearchSource } from "../discovery.ts";
 import { emptyWorkspace, restoreWorkspace, exportPlan, currentDiscovery } from "../model.ts";
 
 const source: SearchSource = { id: "S1", url: "https://acme.example.com/", title: "Acme company", excerpt: "Acme builds workflow software for small business teams." };
@@ -54,4 +54,20 @@ test("research survives refresh/export with full criteria and becomes stale afte
   restored.profile.industry = "Healthcare";
   assert.equal(currentDiscovery(restored), undefined);
   assert.equal(exportPlan(restored).companyResearch, undefined);
+});
+
+test("profile queries remove narrative boilerplate across industries without guessing a startup vertical",()=>{
+ const q=(industry:string,location="",focus="Product fit")=>defaultDiscoveryQuery({industry,location},focus);
+ assert.equal(q("Suggested: B2B companies that use professional events for sales; no specific vertical established."),"B2B companies directory");
+ assert.equal(q("Suggested: insurance damage repair contractors that need a CRM","United States"),"insurance damage repair contractors United States");
+ assert.equal(q("Law firms","London"),"Law firms London");
+ assert.equal(q("Medical device manufacturers","Germany"),"Medical device manufacturers Germany");
+ assert.equal(q("B2B SaaS","Any location"),"B2B SaaS companies");
+ assert.equal(q("No specific vertical established"),"companies directory");
+ assert.ok(q("Restaurants","San Francisco","Recent buying signals").includes("company news"));
+ const profile={industry:"Law firms",location:"London"};
+ assert.equal(resolvedDiscoveryQuery(profile,{focus:"Product fit",query:"site:custom.example law practices",queryMode:"manual"}),"site:custom.example law practices");
+ assert.equal(resolvedDiscoveryQuery(profile,{focus:"Product fit",query:"Suggested: B2B companies that use events startup companies products customers"}),"Law firms London");
+ assert.equal(resolvedDiscoveryQuery(profile,{focus:"Product fit",query:"",queryMode:"manual"}),"");
+ assert.equal(resolvedDiscoveryQuery({...profile,location:"Paris"},{focus:"Product fit",query:"Law firms London",queryMode:"auto"}),"Law firms Paris");
 });

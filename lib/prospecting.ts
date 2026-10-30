@@ -10,7 +10,8 @@ export const contactResearchSchema = z.object({
 export type ContactResearch = z.infer<typeof contactResearchSchema>;
 export const draftSchema = z.object({ companyName: z.string().max(100), to: z.string().max(254), subject: z.string().max(200), body: z.string().max(4000), status: z.enum(["draft", "approved"]), approvedAt: z.string().optional() });
 export type OutreachDraft = z.infer<typeof draftSchema>;
-export const prospectingSchema = z.object({ researchId: z.string().max(200), contacts: z.array(contactResearchSchema).max(10), drafts: z.array(draftSchema).max(10) });
+export const usageReceiptSchema=z.object({eventId:z.string().max(200),status:z.literal("accepted"),discoveryRequestId:z.uuid()});
+export const prospectingSchema = z.object({ researchId: z.string().max(200), contacts: z.array(contactResearchSchema).max(10), drafts: z.array(draftSchema).max(10), usageReceipt:usageReceiptSchema.optional() });
 export type Prospecting = z.infer<typeof prospectingSchema>;
 
 export function publishedEmails(content: string, sourceUrl: string, confirmedDomain?: string) {

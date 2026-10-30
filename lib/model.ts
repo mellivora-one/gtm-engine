@@ -39,7 +39,7 @@ export type Workspace = {
   drafted: boolean;
   productConfirmed: boolean;
   customersConfirmed: boolean;
-  search: { count: string; focus: string; query?: string };
+  search: { count: string; focus: string; query?: string; queryMode?: "auto" | "manual" };
 };
 export const STORAGE_KEY = "gtm-engine:workspace:v1";
 export const emptyWorkspace: Workspace = {
@@ -231,6 +231,7 @@ export function restoreWorkspace(value: unknown): Workspace {
     customersConfirmed: raw.customersConfirmed === true,
     search: {
       query: text(search.query).slice(0, 300),
+      queryMode: search.queryMode === "manual" ? "manual" : search.queryMode === "auto" ? "auto" : undefined,
       count: ["5", "10"].includes(text(search.count))
         ? text(search.count)
         : "5",
