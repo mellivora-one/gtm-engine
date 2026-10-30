@@ -9,6 +9,7 @@ test("published contacts require an exact corporate domain and preserve publicat
  const contacts=publishedEmails(text,"https://acme.com/contact");
  assert.equal(contacts.length,1);assert.equal(contacts[0].email,"hello@acme.com");assert.ok(contacts[0].quote.includes(contacts[0].email));
  assert.equal(publishedEmails("founder@acme.com team@ycombinator.com","https://ycombinator.com/companies/acme").length,0);
+ assert.deepEqual(publishedEmails("founder@acme.com team@ycombinator.com","https://ycombinator.com/companies/acme","acme.com").map(c=>c.email),["founder@acme.com"]);
  const graph=relationshipGraph("Our product",{leads:[{companyName:"Acme",sourceIds:["S1"],fit:"possible",fitReason:"Potential fit",evidenceQuote:"Acme builds software",gaps:[]}],sources:[{id:"S1",url:"https://acme.com",title:"Acme",excerpt:"Acme builds software"}],limitations:[],meta:{runId:crypto.randomUUID(),requestId:crypto.randomUUID(),responseId:"response",model:"gpt-6.1-sol",generatedAt:new Date().toISOString()},query:"Acme",searchedAt:new Date().toISOString(),searchRequestId:"test"},[]);
  assert.equal(graph.edges.length,2);assert.ok(graph.edges.some(e=>e.type==="supported_by"));
 });

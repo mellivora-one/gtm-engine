@@ -13,16 +13,17 @@ export type OutreachDraft = z.infer<typeof draftSchema>;
 export const prospectingSchema = z.object({ researchId: z.string().max(200), contacts: z.array(contactResearchSchema).max(10), drafts: z.array(draftSchema).max(10) });
 export type Prospecting = z.infer<typeof prospectingSchema>;
 
-export function publishedEmails(content: string, sourceUrl: string) {
+export function publishedEmails(content: string, sourceUrl: string, confirmedDomain?: string) {
   const host = new URL(sourceUrl).hostname.toLowerCase().replace(/^www\./, "");
   // Directory, social and consumer addresses cannot become company contacts.
-  if (/(^|\.)(ycombinator\.com|linkedin\.com|crunchbase\.com|facebook\.com|gmail\.com|outlook\.com|yahoo\.com)$/.test(host)) return [];
+  if (!confirmedDomain && /(^|\.)(ycombinator\.com|linkedin\.com|crunchbase\.com|facebook\.com|gmail\.com|outlook\.com|yahoo\.com)$/.test(host)) return [];
+  const emailHost=confirmedDomain ?? host;
   const found: z.infer<typeof publishedEmailSchema>[] = [];
   const seen = new Set<string>();
   for (const match of content.matchAll(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)) {
     const email = match[0].toLowerCase();
     const domain = email.split("@")[1];
-    if (seen.has(email) || !(domain === host || domain.endsWith(`.${host}`)) || /^(noreply|no-reply|donotreply)@/.test(email)) continue;
+    if (seen.has(email) || !(domain === emailHost || domain.endsWith(`.${emailHost}`)) || /^(noreply|no-reply|donotreply)@/.test(email)) continue;
     if (!z.email().safeParse(email).success) continue;
     seen.add(email);
     const start = Math.max(0, match.index! - 65);
