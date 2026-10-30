@@ -346,9 +346,6 @@ a {
   max-width: 780px;
   line-height: 1.65;
 }
-.page-body {
-  animation: arrive 0.24s ease-out;
-}
 .intake-form {
   max-width: 850px;
 }
@@ -1128,16 +1125,6 @@ textarea {
 .not-found p {
   color: var(--muted);
 }
-@keyframes arrive {
-  from {
-    opacity: 0;
-    transform: translateY(7px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 @media (min-width: 1550px) {
   .workspace {
     padding-top: 60px;
@@ -1527,5 +1514,504 @@ textarea {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Blue studio polish: functional hierarchy, a quieter surface, and tactile controls. */
+:root {
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.topbar {
+  background: #ffffff61;
+}
+.page-heading h1 {
+  font-weight: 720;
+  letter-spacing: -1.7px;
+}
+.eyebrow::before {
+  content: "";
+  width: 17px;
+  height: 2px;
+  background: var(--blue);
+  align-self: center;
+}
+.field > label {
+  transition: color 180ms ease;
+}
+.field:focus-within > label {
+  color: #0754d5;
+}
+.field input,
+.field textarea,
+.field select {
+  background: #ffffffed;
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  background: #fff;
+}
+.intake-form textarea:not(:placeholder-shown) {
+  border-color: #86a8d8;
+}
+.intake-form textarea:not(:placeholder-shown) + .textarea-footer {
+  color: #285da2;
+}
+.steps li.active a {
+  box-shadow: inset 0 0 0 1px #6b9df22a;
+}
+.context-panel {
+  background: #ffffffd4;
+  box-shadow: 0 5px 18px #15396804;
+}
+.context-panel .panel-heading {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e8f4;
+}
+.tag {
+  border-radius: 6px;
+}
+.signal-option {
+  transition:
+    border-color 180ms,
+    background 180ms,
+    box-shadow 180ms;
+}
+.signal-option:hover {
+  border-color: #7aa4e5;
+  background: #f8fbff;
+}
+.signal-option.selected {
+  box-shadow: 0 0 0 1px #075cf515;
+}
+.button {
+  position: relative;
+  isolation: isolate;
+  font-size: 13px;
+  border-radius: 8px;
+}
+.button.primary {
+  box-shadow:
+    0 3px 5px #075cf514,
+    inset 0 1px 0 #ffffff24;
+}
+.button.primary:hover {
+  box-shadow:
+    0 6px 15px #075cf526,
+    inset 0 1px 0 #ffffff24;
+}
+.button:disabled {
+  opacity: 0.72;
+  transform: none;
+  cursor: progress;
+}
+.button-spinner {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #ffffff66;
+  border-top-color: #fff;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.details summary {
+  border-radius: 7px;
+}
+.help-content {
+  border-left: 2px solid #abc8f6;
+  padding-left: 13px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* These placeholders appear only during hydration or a genuinely pending navigation. */
+.workspace-skeleton {
+  padding-top: 2px;
+}
+.skeleton {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: #dce7f5;
+  border-radius: 5px;
+}
+.skeleton-field {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.skeleton-label {
+  width: 125px;
+  height: 12px;
+}
+.skeleton-input {
+  width: 100%;
+  height: 47px;
+  border-radius: 7px;
+}
+.skeleton-textarea {
+  width: 100%;
+  height: 150px;
+  border-radius: 7px;
+}
+.skeleton-intake-content {
+  max-width: 850px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.skeleton-intake-content .skeleton-textarea {
+  height: 220px;
+}
+.skeleton-intro {
+  width: 270px;
+  max-width: 80%;
+  height: 25px;
+  margin-bottom: 4px;
+}
+.skeleton-divider {
+  height: 1px;
+  background: #d5e0ef;
+  margin-block: 12px;
+}
+.skeleton-caption {
+  width: 70%;
+  height: 12px;
+}
+.skeleton-status {
+  width: 210px;
+  height: 25px;
+  margin-bottom: 28px;
+}
+.skeleton-form-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.skeleton-context {
+  border: 1px solid #d0dcee;
+  border-radius: 9px;
+  padding: 24px;
+  background: #ffffff66;
+  min-height: 295px;
+}
+.skeleton-context-title {
+  width: 80%;
+  height: 18px;
+  margin-bottom: 29px;
+}
+.skeleton-line {
+  width: 100%;
+  height: 12px;
+  margin-bottom: 14px;
+}
+.skeleton-line.short {
+  width: 65%;
+}
+.skeleton-actions {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 21px;
+  margin-top: 30px;
+}
+.skeleton-intake .skeleton-actions {
+  max-width: 850px;
+}
+.skeleton-intake .skeleton-back {
+  visibility: hidden;
+}
+.skeleton-button {
+  width: 225px;
+  height: 48px;
+  background: #c7daf7;
+  border-radius: 8px;
+}
+.skeleton-back {
+  width: 145px;
+  height: 48px;
+}
+
+@media (min-width: 651px) {
+  .sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100svh;
+  }
+  .field label,
+  legend {
+    font-size: 14px;
+  }
+  input,
+  textarea,
+  select {
+    font-size: 15px;
+  }
+  .workspace-footer {
+    font-size: 10px;
+  }
+}
+@media (max-width: 650px) {
+  .page-heading h1 {
+    letter-spacing: -1px;
+  }
+  .skeleton-intake-content .skeleton-textarea {
+    height: 165px;
+  }
+  .skeleton-actions {
+    gap: 12px;
+  }
+  .skeleton-back {
+    width: 36%;
+  }
+  .skeleton-button {
+    width: 58%;
+  }
+  .skeleton-intake .skeleton-back {
+    display: none;
+  }
+  .skeleton-intake .skeleton-button {
+    width: 100%;
+  }
+  .button {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-body {
+    animation: content-enter 420ms var(--motion-ease) both;
+  }
+  .page-heading .eyebrow {
+    animation: content-enter 450ms var(--motion-ease) both;
+  }
+  .page-heading h1 {
+    animation: content-enter 520ms 40ms var(--motion-ease) both;
+  }
+  .page-heading .subtitle {
+    animation: content-enter 520ms 85ms var(--motion-ease) both;
+  }
+  .form-stack > .field:nth-of-type(2),
+  .intake-form > .field {
+    animation: content-enter 470ms 70ms var(--motion-ease) both;
+  }
+  .form-stack > .field:nth-of-type(3) {
+    animation: content-enter 470ms 110ms var(--motion-ease) both;
+  }
+  .context-panel {
+    animation: context-enter 550ms 100ms var(--motion-ease) both;
+  }
+  .action-area {
+    animation: content-enter 500ms 140ms var(--motion-ease) both;
+  }
+  .brand-mark span {
+    transform-origin: bottom;
+    animation: bar-enter 550ms var(--motion-ease) both;
+  }
+  .brand-mark span:nth-child(2) {
+    animation-delay: 55ms;
+  }
+  .brand-mark span:nth-child(3) {
+    animation-delay: 110ms;
+  }
+  .steps a,
+  .step-number {
+    transition:
+      background 220ms,
+      border-color 220ms,
+      color 220ms,
+      box-shadow 220ms,
+      transform 260ms var(--motion-ease);
+  }
+  .steps a:hover .step-number {
+    transform: translateY(-1px);
+  }
+  .steps li.active .step-number {
+    animation: step-enter 440ms var(--motion-ease) both;
+  }
+  .step-number.done svg {
+    stroke-dasharray: 25;
+    stroke-dashoffset: 0;
+    animation: check-enter 400ms ease-out both;
+  }
+  .button {
+    transition:
+      transform 220ms var(--motion-ease),
+      box-shadow 220ms,
+      background 180ms,
+      border-color 180ms;
+  }
+  .button.primary:not(:disabled):hover {
+    transform: translateY(-2px);
+  }
+  .button:not(:disabled):active {
+    transform: translateY(0) scale(0.985);
+  }
+  .button-spinner {
+    animation: spin 800ms linear infinite;
+  }
+  .intake-form[data-example="true"] textarea {
+    animation: example-highlight 750ms ease-out;
+  }
+  .tag {
+    animation: tag-enter 240ms var(--motion-ease) both;
+  }
+  .product-strip > svg {
+    animation: check-enter 400ms ease-out both;
+    stroke-dasharray: 25;
+  }
+  .status.approved {
+    animation: tag-enter 300ms var(--motion-ease) both;
+  }
+  .details[open] .details-content,
+  .help-content {
+    animation: content-enter 280ms var(--motion-ease) both;
+  }
+  .modal[open] {
+    animation: modal-enter 280ms var(--motion-ease) both;
+  }
+  .modal[open]::backdrop {
+    animation: backdrop-enter 220ms ease-out both;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      #ffffff88 50%,
+      transparent 80%
+    );
+    transform: translateX(-100%);
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+  }
+  .skeleton-field:nth-child(2) .skeleton::after {
+    animation-delay: 100ms;
+  }
+  .skeleton-field:nth-child(3) .skeleton::after {
+    animation-delay: 200ms;
+  }
+}
+@keyframes content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes context-enter {
+  from {
+    opacity: 0;
+    transform: translate(9px, 5px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+@keyframes bar-enter {
+  from {
+    transform: scaleY(0.35);
+    opacity: 0.4;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+@keyframes step-enter {
+  from {
+    transform: scale(0.87);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes check-enter {
+  from {
+    stroke-dashoffset: 25;
+    opacity: 0.2;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@keyframes tag-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes skeleton-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  65%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes example-highlight {
+  from {
+    box-shadow: 0 0 0 4px #075cf51c;
+    border-color: #075cf5;
+  }
+  to {
+    box-shadow: 0 0 0 0 #075cf500;
+    border-color: #86a8d8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:hover,
+  .button:active,
+  .steps a:hover .step-number {
+    transform: none;
+  }
+  .skeleton::after {
+    content: none;
   }
 }

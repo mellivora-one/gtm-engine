@@ -21,6 +21,7 @@ import {
 } from "@/lib/model";
 import { useWorkspace } from "./workspace";
 import { Icon } from "./icons";
+import { WorkspaceSkeleton } from "./workspace-skeleton";
 
 type Page = "intake" | "brief" | "customers" | "discover";
 const steps = ["Product brief", "Ideal customers", "Discover leads"];
@@ -97,10 +98,21 @@ function Actions({
 }
 
 export function Onboarding({ page }: { page: Page }) {
-  const { state, setState, ready, storageAvailable } = useWorkspace();
+  const { state, setState, ready, storageAvailable, isNavigating } =
+    useWorkspace();
   const router = useRouter();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [resetOpen, setResetOpen] = useState(false);
+  const [showNavigationSkeleton, setShowNavigationSkeleton] = useState(false);
+  useEffect(() => {
+    if (!isNavigating) {
+      setShowNavigationSkeleton(false);
+      return;
+    }
+    // Avoid flashing a placeholder for already-prefetched, instant navigations.
+    const timer = setTimeout(() => setShowNavigationSkeleton(true), 140);
+    return () => clearTimeout(timer);
+  }, [isNavigating]);
   const active = page === "customers" ? 1 : page === "discover" ? 2 : 0;
   const allowed =
     page === "intake" ||
@@ -234,7 +246,7 @@ export function Onboarding({ page }: { page: Page }) {
           </div>
         </header>
         <main id="main" className={`workspace page-${page}`}>
-          <div className="page-heading">
+          <div className="page-heading" key={`heading-${page}`}>
             <p className="eyebrow">
               STEP 0{active + 1} <span>/</span>{" "}
               {page === "brief"
@@ -250,10 +262,8 @@ export function Onboarding({ page }: { page: Page }) {
             </h1>
             <p className="subtitle">{subtitles[page]}</p>
           </div>
-          {!ready || !allowed ? (
-            <p className="loading" role="status">
-              Opening your workspace…
-            </p>
+          {!ready || !allowed || showNavigationSkeleton ? (
+            <WorkspaceSkeleton variant={page} />
           ) : (
             <div className="page-body" key={page}>
               {page === "intake" ? (
@@ -293,8 +303,7 @@ export function Onboarding({ page }: { page: Page }) {
 }
 
 function Intake() {
-  const { state, setState } = useWorkspace();
-  const router = useRouter();
+  const { state, setState, navigate, isNavigating } = useWorkspace();
   const [error, setError] = useState("");
   const errorRef = useRef<HTMLParagraphElement>(null);
   const update = (key: "description" | "url", value: string) => {
@@ -312,7 +321,7 @@ function Intake() {
     event.preventDefault();
     try {
       setState(draftWorkspace(state));
-      router.push("/brief");
+      navigate("/brief");
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Please check your input.",
@@ -321,7 +330,12 @@ function Intake() {
     }
   }
   return (
-    <form onSubmit={submit} className="intake-form">
+    <form
+      onSubmit={submit}
+      className="intake-form"
+      data-example={state.source === "example"}
+      aria-busy={isNavigating}
+    >
       <div className="intake-prompt">
         <span className="prompt-icon">
           <Icon name="spark" size={18} />
@@ -399,8 +413,21 @@ function Intake() {
         </p>
       )}
       <Actions note="Review and confirm your brief before we find customers.">
-        <button className="button primary" type="submit">
-          Understand my product <Icon name="arrow" />
+        <button
+          className="button primary"
+          type="submit"
+          disabled={isNavigating}
+        >
+          {isNavigating ? (
+            <>
+              Opening product brief{" "}
+              <span className="button-spinner" aria-hidden="true" />
+            </>
+          ) : (
+            <>
+              Understand my product <Icon name="arrow" />
+            </>
+          )}
         </button>
       </Actions>
     </form>
@@ -408,8 +435,7 @@ function Intake() {
 }
 
 function Brief() {
-  const { state, setState } = useWorkspace();
-  const router = useRouter();
+  const { state, setState, navigate, isNavigating } = useWorkspace();
   const [error, setError] = useState("");
   const personal = isPersonalLinkedIn(state.intake.url);
   const update = (key: keyof Product, value: string) => {
@@ -431,13 +457,13 @@ function Brief() {
         productConfirmed: true,
         customersConfirmed: false,
       }));
-      router.push("/customers");
+      navigate("/customers");
     } catch {
       setError("Please enter a valid product website, or leave it blank.");
     }
   }
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} aria-busy={isNavigating}>
       <div className="status-row">
         <Status>Draft · Needs your confirmation</Status>
         {state.source === "example" && (
@@ -601,8 +627,21 @@ function Brief() {
         backLabel="Back to input"
         note="Next: choose your ideal customers. No searches or messages have started."
       >
-        <button className="button primary" type="submit">
-          Confirm product brief <Icon name="arrow" />
+        <button
+          className="button primary"
+          type="submit"
+          disabled={isNavigating}
+        >
+          {isNavigating ? (
+            <>
+              Opening customer setup{" "}
+              <span className="button-spinner" aria-hidden="true" />
+            </>
+          ) : (
+            <>
+              Confirm product brief <Icon name="arrow" />
+            </>
+          )}
         </button>
       </Actions>
     </form>
@@ -684,8 +723,7 @@ function TagEditor({
 }
 
 function Customers() {
-  const { state, setState } = useWorkspace();
-  const router = useRouter();
+  const { state, setState, navigate, isNavigating } = useWorkspace();
   const [helpOpen, setHelpOpen] = useState(false);
   const [error, setError] = useState("");
   const update = <K extends keyof Profile>(key: K, value: Profile[K]) => {
@@ -704,10 +742,10 @@ function Customers() {
       return;
     }
     setState((previous) => ({ ...previous, customersConfirmed: true }));
-    router.push("/discover");
+    navigate("/discover");
   }
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} aria-busy={isNavigating}>
       <div className="product-strip">
         <Icon name="check" size={16} />
         <span>Confirmed product</span>
@@ -910,8 +948,21 @@ function Customers() {
         backLabel="Back to product brief"
         note="Next: set up discovery. No searches or outreach have started."
       >
-        <button className="button primary" type="submit">
-          Confirm customers <Icon name="arrow" />
+        <button
+          className="button primary"
+          type="submit"
+          disabled={isNavigating}
+        >
+          {isNavigating ? (
+            <>
+              Opening discovery{" "}
+              <span className="button-spinner" aria-hidden="true" />
+            </>
+          ) : (
+            <>
+              Confirm customers <Icon name="arrow" />
+            </>
+          )}
         </button>
       </Actions>
     </form>

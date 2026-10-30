@@ -9,6 +9,8 @@ A responsive blue onboarding interface for defining a product, confirming ideal 
 3. Define industry, company size, location, buyer roles, buying signals, and exclusions.
 4. Configure discovery and download the confirmed brief and search plan as JSON.
 
+The interface includes staggered page entrances, step-completion feedback, responsive focus/hover states, and animated dialogs. Layout-matched skeletons cover initial hydration and genuinely pending navigation; fast navigation is not artificially delayed. Reduced-motion preferences disable animation and shimmer.
+
 State persists in this browser using versioned local storage. Start over clears it after confirmation. No account, backend, API key, analytics, or database is required. No user input is sent to external services by the application.
 
 ## Prototype boundaries

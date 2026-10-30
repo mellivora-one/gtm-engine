@@ -5,10 +5,12 @@ import {
   useContext,
   useEffect,
   useState,
+  useTransition,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   emptyWorkspace,
   restoreWorkspace,
@@ -21,10 +23,14 @@ type WorkspaceContext = {
   setState: Dispatch<SetStateAction<Workspace>>;
   ready: boolean;
   storageAvailable: boolean;
+  isNavigating: boolean;
+  navigate: (href: string) => void;
 };
 const Context = createContext<WorkspaceContext | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const [isNavigating, startNavigation] = useTransition();
   const [state, setState] = useState<Workspace>(emptyWorkspace);
   const [ready, setReady] = useState(false);
   const [storageAvailable, setStorageAvailable] = useState(true);
@@ -46,7 +52,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, [ready, state]);
   return (
-    <Context.Provider value={{ state, setState, ready, storageAvailable }}>
+    <Context.Provider
+      value={{
+        state,
+        setState,
+        ready,
+        storageAvailable,
+        isNavigating,
+        navigate: (href) => startNavigation(() => router.push(href)),
+      }}
+    >
       {children}
     </Context.Provider>
   );
