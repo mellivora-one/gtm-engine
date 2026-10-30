@@ -1,3 +1,4 @@
+import { publishedEmails } from "../prospecting.ts";
 import { websiteUrl } from "./website.ts";
 import { GateError } from "./budget.ts";
 import type { SearchSource } from "../discovery.ts";
@@ -47,6 +48,7 @@ export async function searchCompanies(query: string, signal: AbortSignal, fetche
     sources.push({ id: `S${sources.length + 1}`, url,
       title: typeof item.title === "string" ? item.title.slice(0, 180) : new URL(url).hostname,
       excerpt: item.content.trim().slice(0, 1000),
+      publishedEmails: publishedEmails(`${item.content}\n${raw}`, url),
       ...(status ? { operatingStatus: status } : {}), ...(teamSize !== undefined ? { teamSize } : {}) });
   }
   if (!sources.length) throw new GateError("search_empty", 422, "No usable public sources were returned. Edit the query and try again; no company results were invented and OpenAI was not called.");

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ProspectWorkbench } from "./prospect-workbench";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -415,7 +416,7 @@ export function Onboarding({ page }: { page: Page }) {
                 : "Browser storage unavailable · Changes last for this visit"}
             </span>
             <span>
-              Public-source research via Tavily. No contact enrichment or sending.
+              Public-source research via Tavily. Company email research available; no live sending.
             </span>
           </footer>
         </main>
@@ -1318,7 +1319,7 @@ function Discover() {
           </Field>
           <div className="prototype-note">Your query is sent to Tavily. Your approved brief, criteria, and public search snippets are sent to OpenAI to assess fit. One basic search per click; no automatic retries. Do not include secrets or private contact details.</div>
           <div className="info-line"><Icon name="info" /><p>These are company candidates, not verified buyers. Operating status, company size, current event attendance, and purchase intent may be unknown.</p></div>
-          <div className="enrichment"><h3>Contact enrichment and outreach</h3><p className="hint">Not connected. No people, email addresses, or messages are requested.</p></div>
+          <div className="enrichment"><h3>Contact enrichment and outreach</h3><p className="hint">After discovery, research published company emails, explore their source-backed graph, and review editable drafts. Sending is not connected.</p></div>
         </section>
         <aside className="context-panel">
           <h2>Confirmed customer profile</h2><Status approved>Approved</Status>
@@ -1357,11 +1358,12 @@ function Discover() {
       <details className="all-search-sources"><summary>All {research.sources.length} retrieved sources</summary><ul>{research.sources.map(source => <li key={source.id}><a href={source.url} target="_blank" rel="noopener noreferrer">[{source.id}] {source.title}</a><p className="hint">{source.excerpt}</p>{(source.operatingStatus || source.teamSize !== undefined) && <p className="hint">Source-reported metadata: {source.operatingStatus || "status unknown"}{source.teamSize !== undefined ? ` · Team size: ${source.teamSize}` : ""}. Not independently verified.</p>}</li>)}</ul></details>
       <p className="analysis-receipt">{research.meta.model} · Run: {research.meta.runId}<br />Tavily request: {research.searchRequestId}</p>
     </section>}
+    {research && <ProspectWorkbench key={research.meta.responseId} product={state.product} research={research} />}
     <div className="discovery-export"><button type="button" className="button secondary" onClick={() => { setDownloaded(false); setPlanOpen(true); }}>{research ? "Preview / export research" : "Preview / export plan"}</button></div>
     {planOpen && <Modal title={research ? "Export company research" : "Your discovery plan"} onClose={() => setPlanOpen(false)}>
       <Status>{research ? `${research.leads.length} sourced company candidates` : "Plan only · No company search in this export"}</Status>
       <p>{research ? "Export includes company candidates, fit assessments, source links, search query, and run receipts alongside your confirmed brief and criteria." : "Export your product brief, approved customer criteria, and search settings without making a paid request."}</p>
-      <p className="hint">No contact enrichment or outreach has been performed.</p>
+      <p className="hint">This export contains company discovery only. Use “Export graph + drafts” for contact research and local approvals; no email is delivered.</p>
       <button className="button primary full-width" onClick={download}><Icon name="download" />{downloaded ? "Download again" : "Download JSON"}</button>
       <p className="hint" role="status">{downloaded ? "Download requested. Check your browser’s downloads." : "Downloading makes no new API call."}</p>
     </Modal>}

@@ -31,7 +31,7 @@ The server requests at most 20 public search hits, disables automatic depth sele
 
 Each company has a model-inferred fit assessment, a verbatim evidence quote, and source links. Server checks require names present in the cited source text/title/URL, valid retrieved source IDs, exact matching quotes, distinct names, and exclusion of the user's own product. Unbacked candidates are dropped. This is not independent company verification: employee count, founder involvement, location, event attendance, and purchase intent may remain unknown. The system can return fewer or zero candidates rather than invent matches.
 
-Results, sources, query and provider receipts persist only in the current browser and export to JSON. Changing criteria or query marks the previous result stale and excludes it from current results/exports. No search runs on load, refresh, edit, export, or navigation. Contact enrichment, people research and outreach remain disconnected.
+Results, sources, query and provider receipts persist only in the current browser and export to JSON. Changing criteria or query marks the previous result stale and excludes it from current results/exports. No search runs on load, refresh, edit, export, or navigation. Published company-email research and a browser-local relationship graph / draft approval workbench are available after discovery. Named-person enrichment and live email delivery remain disconnected.
 
 Company discovery shares the existing ledger, original cutoff and both spending allowances. For compatibility with deployed ledger readers, company-fit assessments use the legacy `profile` reservation category with an explicit `:discover:` request ID; this preserves all existing reservations without a migration or reset. Each click reserves $0.10 for the bounded model request and 1 Tavily credit before either provider is called. Failed/unknown attempts are not refunded. Basic Search costs 1 API credit; no advanced search, crawl, research endpoint, top-up or upgrade is enabled.
 
@@ -54,7 +54,7 @@ The cutoff and allowance protect **this application only**. They do not expire/r
 
 ## Scope and privacy
 
-**Single-page website retrieval and public-source company discovery are connected. LinkedIn reading, people/contact enrichment, graphs, billing, and outreach are not connected.** Buying signals remain criteria unless supported by cited search evidence. Company candidates require review and are not verified buyers.
+**Website retrieval, company discovery, published company-email research, browser-local relationship graph, editable template drafts, human approval, and Postmark no-delivery API validation are connected. No native graph database, GraphRAG, verified buyer contacts, billing, or real email sending is connected.** Buying signals remain criteria unless supported by cited search evidence. Company candidates require review and are not verified buyers.
 
 Public website URLs are sent to Tavily when website analysis is requested; the reviewed search query is sent when company discovery is requested. Bounded extracted text, descriptions, and confirmed brief fields are sent to OpenAI when the user requests generation; `store: false` is set. This does not override OpenAI's applicable API data-retention policies. Inputs/results otherwise remain in browser-local storage, which is device-specific and unencrypted. Do not enter credentials or sensitive personal information. The browser never receives API keys or Blob credentials.
 
@@ -89,3 +89,10 @@ The public GitHub repository is connected to Vercel. Production uses normal Next
 Enter a public product website URL (description optional) → **Understand my product** → review the real brief, source link, excerpt, and unknown fields → edit a fact → **Confirm product brief** → review model-generated customer suggestions and assumptions → **Confirm customers** → review the query → **Find companies** → inspect real source-backed candidates and unknowns → export research. Refresh preserves results without another paid call; changing criteria invalidates them. Verify both AI reservations and provider response IDs for the same Run ID in the private ledger.
 
 This release is not a hackathon submission. Sourced company discovery does not imply working people enrichment, outreach, or every proposed sponsor integration.
+
+## Deadline demo: relationship graph and approval
+After company discovery, use the Relationship graph / Contacts & approval workbench. One contact-search click uses one basic Tavily Search, reserves one of the same 200 credits and a conservative $0.10 allowance slot, with the original expiry/rate limits. Emails must appear in retrieved text and match the publishing website domain; consumer/social/directory contacts are excluded. An address on a privacy page may not be appropriate for sales; publication does not imply consent, current employment or deliverability. No guessed addresses or paid email verification.
+
+The graph has Product, Company, Source and Contact nodes, with matched_to (AI inference), supported_by and published_contact edges. It is exported as nodes/edges JSON and persists only in the current browser—not Neo4j/Kùzu or GraphRAG. Drafts are deterministic editable templates based on the approved brief and source quote, not additional LLM generation. Editing invalidates approval.
+
+Postmark validation uses the official POSTMARK_API_TEST sentinel and a fixed blackhole recipient, never a production token. It requires draft approval and reuses the unchanged demo rate/expiry/reservation guard. Message IDs prove API validation only, NOT delivery, sender verification or buyer consent. Live sending is unavailable. No other project's credentials were copied. Band and Flexprice are NOT implemented.

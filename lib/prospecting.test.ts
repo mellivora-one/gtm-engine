@@ -1,0 +1,24 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { publishedEmails, relationshipGraph } from "./prospecting.ts";
+import { validatePostmark } from "./server/postmark.ts";
+import { researchContacts } from "./server/contacts.ts";
+
+test("published contacts require an exact corporate domain and preserve publication evidence", () => {
+ const text="Contact Acme at hello@acme.com. Also person@gmail.com, stolen@notacme.com, and noreply@acme.com.";
+ const contacts=publishedEmails(text,"https://acme.com/contact");
+ assert.equal(contacts.length,1);assert.equal(contacts[0].email,"hello@acme.com");assert.ok(contacts[0].quote.includes(contacts[0].email));
+ assert.equal(publishedEmails("founder@acme.com team@ycombinator.com","https://ycombinator.com/companies/acme").length,0);
+ const graph=relationshipGraph("Our product",{leads:[{companyName:"Acme",sourceIds:["S1"],fit:"possible",fitReason:"Potential fit",evidenceQuote:"Acme builds software",gaps:[]}],sources:[{id:"S1",url:"https://acme.com",title:"Acme",excerpt:"Acme builds software"}],limitations:[],meta:{runId:crypto.randomUUID(),requestId:crypto.randomUUID(),responseId:"response",model:"gpt-6.1-sol",generatedAt:new Date().toISOString()},query:"Acme",searchedAt:new Date().toISOString(),searchRequestId:"test"},[]);
+ assert.equal(graph.edges.length,2);assert.ok(graph.edges.some(e=>e.type==="supported_by"));
+});
+test("contact route rejects cross-origin and invalid requests before spending", async()=>{
+ assert.equal((await researchContacts(new Request("https://app.example/api/research/contacts",{method:"POST",headers:{origin:"https://evil.example"},body:"{}"}))).status,403);
+ assert.equal((await researchContacts(new Request("https://app.example/api/research/contacts",{method:"POST",headers:{origin:"https://app.example","Content-Type":"application/json"},body:"{}"}))).status,400);
+});
+
+test("Postmark API test rejects unapproved drafts and foreign origins before any provider call",async()=>{
+ const url="https://app.example/api/outreach/validate";
+ assert.equal((await validatePostmark(new Request(url,{method:"POST",headers:{origin:"https://evil.example"},body:"{}"}))).status,403);
+ assert.equal((await validatePostmark(new Request(url,{method:"POST",headers:{origin:"https://app.example","Content-Type":"application/json"},body:JSON.stringify({runId:crypto.randomUUID(),requestId:crypto.randomUUID(),approved:false,subject:"Test",body:"Test"})}))).status,400);
+});

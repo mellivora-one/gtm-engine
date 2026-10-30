@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { publishedEmailSchema } from "./prospecting.ts";
 import { productSchema, profileSchema, metaSchema } from "./ai-schema.ts";
 
 export const focusSchema = z.enum(["Product fit and buying signals", "Product fit", "Recent buying signals"]);
@@ -18,6 +19,7 @@ export const searchSourceSchema = z.object({
     try { const u = new URL(value); return ["https:", "http:"].includes(u.protocol) && !u.username && !u.password; } catch { return false; }
   }),
   title: z.string().max(180), excerpt: z.string().max(1000),
+  publishedEmails: z.array(publishedEmailSchema).max(3).optional(),
   operatingStatus: z.enum(["active", "inactive"]).optional(),
   teamSize: z.number().int().nonnegative().max(1000000).optional(),
 });
