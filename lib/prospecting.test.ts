@@ -22,3 +22,10 @@ test("Postmark API test rejects unapproved drafts and foreign origins before any
  assert.equal((await validatePostmark(new Request(url,{method:"POST",headers:{origin:"https://evil.example"},body:"{}"}))).status,403);
  assert.equal((await validatePostmark(new Request(url,{method:"POST",headers:{origin:"https://app.example","Content-Type":"application/json"},body:JSON.stringify({runId:crypto.randomUUID(),requestId:crypto.randomUUID(),approved:false,subject:"Test",body:"Test"})}))).status,400);
 });
+
+test("real demo sending rejects a wrong access code before spending",async()=>{
+ const names=["OPENAI_API_KEY","BLOB_READ_WRITE_TOKEN","POSTMARK_SERVER_TOKEN","DEMO_SEND_CODE","POSTMARK_FROM_EMAIL","DEMO_EMAIL_TO"];const old=Object.fromEntries(names.map(k=>[k,process.env[k]]));
+ try{Object.assign(process.env,{OPENAI_API_KEY:"test",BLOB_READ_WRITE_TOKEN:"test",POSTMARK_SERVER_TOKEN:"test",DEMO_SEND_CODE:"private-test-code",POSTMARK_FROM_EMAIL:"sender@example.com",DEMO_EMAIL_TO:"owner@example.com"});
+ const response=await validatePostmark(new Request("https://app.example/api/outreach/demo",{method:"POST",headers:{origin:"https://app.example","Content-Type":"application/json"},body:JSON.stringify({runId:crypto.randomUUID(),requestId:crypto.randomUUID(),approved:true,accessCode:"wrong-code",subject:"Demo",body:"Demo"})}),true);assert.equal(response.status,403);
+ }finally{for(const k of names){if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k];}}
+});
