@@ -29,7 +29,7 @@ export function websiteUrl(input: string): string {
   const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
   if (/(^|\.)linkedin\.com$/.test(hostname))
     throw new GateError("linkedin_not_supported", 400,
-      "LinkedIn profiles are not scraped. Replace this link with your product website, or remove it and describe the project you want to use.");
+      "This link type is not supported. Use a public product website, or remove the link and describe your product.");
   if (url.port || isIP(hostname.replace(/^\[|\]$/g, "")) ||
       /(^|\.)(localhost|local|internal|test|invalid|example)$/.test(hostname))
     throw new GateError("private_url", 400, "Use a public website with a standard HTTP or HTTPS port, not a local or private address.");

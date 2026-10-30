@@ -113,7 +113,7 @@ export function normalizeUrl(input: string): string {
     url.password
   ) {
     throw new Error(
-      "Enter a valid website or LinkedIn URL, such as https://example.com.",
+      "Enter a valid product website URL, such as https://example.com.",
     );
   }
   return url.href;

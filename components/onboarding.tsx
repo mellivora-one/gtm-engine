@@ -458,7 +458,7 @@ function Intake() {
       setError("");
       const draft = draftWorkspace(state);
       const linkedIn = draft.intake.url && /(^|\.)linkedin\.com$/i.test(new URL(draft.intake.url).hostname.replace(/\.$/, ""));
-      if (linkedIn) throw new Error("LinkedIn profiles are not scraped. Replace this link with your product website, or remove it and describe the project you want to use.");
+      if (linkedIn) throw new Error("This link type is not supported. Use a public product website, or remove the link and describe your product.");
       if (!draft.intake.url && draft.intake.description.length < 20)
         throw new Error("Add at least 20 characters describing your product, or enter a public product website.");
       const runId = crypto.randomUUID();
@@ -541,8 +541,8 @@ function Intake() {
       </div>
       <Field
         id="url"
-        label="Product website or LinkedIn URL"
-        hint="A public product website can be used on its own. LinkedIn requires a website or pasted product description instead."
+        label="Product website"
+        hint="Add a public product website, a description, or both."
       >
         <div className="input-with-icon">
           <Icon name="link" />
@@ -564,7 +564,7 @@ function Intake() {
       </Field>
       <div className="info-line" id="intake-help">
         <Icon name="info" size={18} />
-        <p>Personal LinkedIn profile? Tell us which project you mean and use its website. We do not assume your employer is your product.</p>
+        <p>We read only the page you provide. Use a product or About page with a clear description of what you offer.</p>
       </div>
       <div className="prototype-note">
         <strong>
@@ -688,9 +688,8 @@ function Brief() {
         <div className="notice">
           <Icon name="info" />
           <p>
-            <strong>Which project should we use?</strong> This profile has not
-            been fetched. Enter the project name and website below; we will not
-            assume your employer is your product.
+            <strong>Add your product details.</strong> This link was not read.
+            Enter the product name and a public product website below.
           </p>
         </div>
       )}
